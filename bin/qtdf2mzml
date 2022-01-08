@@ -1,30 +1,26 @@
 #!/bin/bash
 #
-# Program: TPP HPC Tools
-# Author:  Joe Slagel
+# Program: qtdf2mzml
+# Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2012 by Joseph Slagel
+# Copyright (C) 2009-2012 by Eric Deutsch
 # 
-# This library is free software; you can redistribute it and/or             
-# modify it under the terms of the GNU Lesser General Public                
-# License as published by the Free Software Foundation; either              
-# version 2.1 of the License, or (at your option) any later version.        
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
 #                                                                           
-# This library is distributed in the hope that it will be useful,           
-# but WITHOUT ANY WARRANTY; without even the implied warranty of            
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
-# General Public License for more details.                                  
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
 #                                                                           
-# You should have received a copy of the GNU Lesser General Public          
-# License along with this library; if not, write to the Free Software       
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
 # 
 # Institute for Systems Biology
-# 1441 North 34th St.
-# Seattle, WA  98103  USA
-# jslagel@systemsbiology.org
-#
-# $Id: $
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
 #
 
 set -e          # Tell bash to exit if any statement fails
@@ -34,7 +30,8 @@ if [ -z "$HOST" ]; then
 fi
 
 if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
-  echo "ERROR: Please execute this from either regis (old cluster) or regis 12 (new cluster)"
+  #echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+  echo "ERROR: Please execute this from regis12 (new cluster head node)"
   exit
 fi
 
@@ -50,34 +47,85 @@ fi
    # Default number of maximum processors (threads)
    MAX_PROCS=${MAX_PROCS:-80}
 
+   # Set the number of processors
+   NP=${NP:-16}
+
    # Default qsub flags use 80 threads on 1 host (if num_threads = 0)
    QSUBFLAGS="${QSUBFLAGS}"
    
    # Programs
-   COMET=${COMET-`which comet 2>/dev/null`}
-   INTERACTPARSER=${INTERACTPARSER-$(which InteractParser || true)}
+   EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
    
 # -----------------------------------------------------------------------------
 
+function parse_options() {
+   PERMITTED_EXTENSIONS=$1; shift
+   
+   INPUTS=
+   while [ "$1" ]; do
+      case "$1" in 
+      --)
+         shift
+         QSUBFLAGS+=" $*"
+         break
+         ;;
+      -h|--help)
+         search_usage
+         ;;
+      -m|--man)
+         POD=`dirname $0`/qgrid_functions
+         pod2man -n 'HPC TOOLS' -r 'HPC TOOLS' \
+            -c 'Trans-Proteomic Pipeline (TPP)' $POD | nroff -man | less
+         exit
+         ;;
+      -q|--queue)
+         Q_OPT="$2"
+         shift 2
+         ;;
+      -o|--out-dir)
+         O_OPT="$2"
+         shift 2
+         ;;
+      -v|--verbose)
+         V_OPT="true"
+         shift
+         ;;
+      -*)
+         search_usage "invalid option $1"
+         ;;
+      *)
+         eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) search_usage "invalid file $1";; esac"
+         [ -f "$1" ] || search_usage "$1 file not found"
+         INPUTS+=" $1"
+         shift
+         ;;
+      esac
+   done
+
+   [ -z "$INPUTS" ]  && search_usage "Error missing one or more input files"
+
+   if [ ! -z "$O_OPT" ]; then
+      mkdir -p "$O_OPT"
+      O_OPT=$(rel2abs "$O_OPT")
+   fi
+
+   #### Set the QQUEUE value
+   if [ ! -z "$Q_OPT" ]; then
+      QQUEUE=$Q_OPT
+   else
+      QQUEUE=active
+   fi
+
+   true                 # return "status"
+}
+
 #
-# Check parameter file 
+# Check parameter file if there is one
 #
 function check_params() {
-   NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
-   if [[ $NP -gt "$MAX_PROCS" ]]; then
-      die "Error num_threads parameter should be set to value between 0 and $MAX_PROCS"
-   fi
 
-   PEPXML=$(perl -ne 'print $1 if /^\s*output_pepxmlfile\s*=\s*(\d+)/' $P_OPT)
-   if [[ $PEPXML -ne 1 ]]; then
-      die "Error output_pepxml parameter should be set to 1"
-   fi
+   QSUBFLAGS="-pe shm 16 ${QSUBFLAGS}"
 
-   if [[ $NP -eq 0 ]]; then
-       QSUBFLAGS="-pe serial ${MAX_PROCS}"
-   else
-       QSUBFLAGS="-pe serial ${NP}"
-   fi
 }
 
 #
@@ -86,23 +134,17 @@ function check_params() {
 #
 function setcmds() {
 
-   prog=comet
+   prog=tdf2mzml
    
    params="$(rel2abs $P_OPT)"
    input="$(basename $file)"
 
    # Remove previous results
-   rm -f $odir$root.pepXML $odir$root.pep.xml  $odir$root.$prog.qlog
+   rm -f $odir$root.mzML  $odir$root.$prog.qlog
    
    cmds=$(cat <<EOF
    
-$COMET -P$params -N$odir$root $file
-mv $odir$root.pep.xml $odir$root.pepXML
-
-# Use InteractParser to make sure the results are TPP compatible
-$INTERACTPARSER $odir$root.pep.xml $odir$root.pepXML -L0 -R9999 \
-   -a$idir
-rm -f $odir$root.pepXML
+$EXECUTABLE $file $odir$root.mzML
 
 EOF
 )
@@ -119,8 +161,8 @@ fi
 
 
 # Check for necessary programs
-[ -x "${COMET}" ] || die "Error no comet in your path"
+#[ -x "${COMET}" ] || die "Error no comet in your path"
 
-search_options comet.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
+parse_options '*.d' $*
 check_params
 submit_jobs
