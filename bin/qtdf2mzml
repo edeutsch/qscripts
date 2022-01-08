@@ -23,14 +23,18 @@
 # spctools@systemsbiology.org
 #
 
-set -e          # Tell bash to exit if any statement fails
+
+# Tell bash to exit if any statement fails
+set -e
+
 if [ -z "$HOST" ]; then
   echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
   exit
 fi
 
-if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
-  #echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+#if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
+#   echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+if [ "$HOST" != "regis12" ]; then
   echo "ERROR: Please execute this from regis12 (new cluster head node)"
   exit
 fi
@@ -55,6 +59,7 @@ fi
    
    # Programs
    EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
+   LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml
    
 # -----------------------------------------------------------------------------
 
@@ -95,7 +100,7 @@ function parse_options() {
          ;;
       *)
          eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) search_usage "invalid file $1";; esac"
-         [ -f "$1" ] || search_usage "$1 file not found"
+         [ -d "$1" ] || search_usage "$1 directory not found"
          INPUTS+=" $1"
          shift
          ;;
@@ -104,7 +109,12 @@ function parse_options() {
 
    [ -z "$INPUTS" ]  && search_usage "Error missing one or more input files"
 
-   if [ ! -z "$O_OPT" ]; then
+   #### If no output directory is specified, use the current working directory `pwd`
+   if [ -z "$O_OPT" ]; then
+      O_OPT=`pwd`
+
+   #### Else if it is specified, try to create in case it doesn't exist
+   else
       mkdir -p "$O_OPT"
       O_OPT=$(rel2abs "$O_OPT")
    fi
@@ -136,18 +146,45 @@ function setcmds() {
 
    prog=tdf2mzml
    
-   params="$(rel2abs $P_OPT)"
-   input="$(basename $file)"
+   # Remove possible previous log files
+   if [ ! -z $V_OPT ]; then
+      echo "INFO: Remove previous output files if they exist"
+   fi
+   rm -f $odir$root.$prog.q*
 
-   # Remove previous results
-   rm -f $odir$root.mzML  $odir$root.$prog.qlog
+   #### If the output file already exists
+   skip="false"
+   if [ -f $odir$root.mzML ]; then
+
+      #### If the PURGE option is specified, then delete it
+      if [ ! -z "$P_OPT" ]; then
+         rm -f $odir$root.mzML
+      #### Else we will skip this file
+      else
+         echo "INFO: Output already exists. Skip $file"
+         skip="true"
+      fi
+   fi
+
+   if [ "$skip" == "true" ]; then
+     cmds=
+     return
+   fi
+
+   #### Define the commands to execute
+    cmds=$(cat <<EOF
    
-   cmds=$(cat <<EOF
-   
-$EXECUTABLE $file $odir$root.mzML
+export LD_LIBRARY_PATH=$LIBRARY_PATH
+$EXECUTABLE -i $file -o $odir$root.mzML
 
 EOF
 )
+
+   #### If verbose, show the commands
+   if [ ! -z $V_OPT ]; then
+      echo "INFO: Will execute the following on a cluster node:$cmds"
+   fi
+
 }
 
 
@@ -156,13 +193,10 @@ if [ "$HOST" == "regis" ]; then
   source qgrid_functions
 fi
 if [ "$HOST" == "regis12" ]; then
-  source slurm_functions
+  source /proteomics/sw/qscripts/lib/slurm_functions
 fi
-
-
-# Check for necessary programs
-#[ -x "${COMET}" ] || die "Error no comet in your path"
 
 parse_options '*.d' $*
 check_params
 submit_jobs
+

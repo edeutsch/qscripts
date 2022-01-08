@@ -41,6 +41,8 @@
 # Feel free to modify these variables as needed for your site.
 #
 
+   echo "INFO: Sourcing dev slurm_functions"
+
    # Default name of the job
    QNAME=${QNAME:-$(basename $0)}
    
@@ -214,8 +216,19 @@ function submit_jobs () {
       idir="$(dirname "$file")/"                # base directory of input
       input=$(basename "${file%.gz}")           # filename w/o gz extension
       root="${input%.*}"                        # filename w/o extension
-   
-      setcmds; submit                           # submit job
+
+      if [ ! -z $V_OPT ]; then
+         echo "INFO: Submitting file=$file with root=$root" 
+      fi
+
+      #### Create the commands to run
+      setcmds
+
+      #### If there's no command to run after setcmds, then skip it
+      if [ ! -z "$cmds" ]; then
+         submit
+      fi
+
    done
 }
 
@@ -316,7 +329,9 @@ QSUB_SCRIPT
 
    # Submit the job
    #JOB=$($QSUB --nodelist=regis14 "$SFILE")
+   #JOB="TESTMODE: Did not actually submit the job"
    JOB=$($QSUB "$SFILE")
+
    echo $JOB
    echo $JOB | perl -ne 'print $1 if /Submitted batch job (\d+)/' > "$JFILE"
 }
