@@ -59,7 +59,7 @@ fi
    
    # Programs
    EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
-   LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml
+   LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml:/usr/lib/x86_64-linux-gnu
    
 # -----------------------------------------------------------------------------
 
