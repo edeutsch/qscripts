@@ -3,7 +3,7 @@
 # Program: qtdf2mzml
 # Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2012 by Eric Deutsch
+# Copyright (C) 2009-2022 by Eric Deutsch
 # 
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the Apache 2.0 License.
@@ -247,10 +247,10 @@ Common Options:
     
 =head1 DESCRIPTION
 
-Collection of wrapper programs which can be used to submit different kinds
-of proteomics programs to a Sun Grid Engine cluster.
+Submit one or more Bruker timsTOF raw msruns in the form of .d folders to
+the cluster nodes to be converted to mzML.
 
-=head1 COMMON OPTIONS
+=head1 OPTIONS
 
 =over 5
 
@@ -262,187 +262,76 @@ Print a brief help message and exit.
 
 Prints this manual page
 
+=item B<-v, --verbose>
+
+Prints information as files are queued up for processing
+
+=item B<-p,--purge>
+
+Purge the destination files if they already exist. They will be deleted
+on the head node before the job is submitted instead of as part of the job.
+Without this flag, if the intended output file already exists, then
+processing is skipped.
+
+=item B<-o,--out-dir DIR>
+
+Specifies the destination directory of the processing results.  If the destination
+directory doesn't exist, it will be created first and output files
+will be placed in this destination.
+
 =item B<-- [qsub options]>
 
 Any options following a "--" designator will be used as additional parameters to
-the qsub command.  So for example to change the queue that the job is submitted
-to you could run the command "qtandem *.mzML -- -q serial". Or to send you 
-an email when the job completes you could use "qomssa *.mzML -- -m ae".
-
-Please see the man page for the qsub command for a full explaination of all of
+the sbatch command.  This is for advanced usage only.
+Please see the man page for the sbatch command for a full explaination of all of
 the possible options.
 
-
-=head1 MS/MS SEARCH IDENTIFICAION OPTIONS
-
-=item B<-p,--params FILE>
-
-Specify the parameters file to use in the search.  If not provided then the
-program will default to a file named "I<search>.params" in the local current
-directory, where I<search> is the name of the search program to invoke.
-E.g. qtandem will defaults to "tandem.params".
-
-Parameter files are expected to be in the format normally accepted by the
-search program in use with some exceptions.  Please see the specific section
-on the search program for more details about the format and these exceptions. 
-For most search programs an input specific parameters file will be created.
-These files will be named after the spectra filename and the search program, 
-for example a halo1.tandem.params will be created in the local directory for
-the file halo1.mzXML.
-
-=item B<-d,--dest DIR>
-
-Specifies the destination directory of the search results.  If the destination
-directory doesn't exist it will be created first then links to all input files
-will be placed in this destination along with all output files from the search.
-No care is taken to prevent overwriting any existing files.
-
 =back
-
-=head1 PREREQUSITES
-
-First off you can only invoke these commands on the head node of the cluster
-(or any system that has permissions to submit jobs to the cluster). Secondly,
-these programs require the appropriate search programs be installed on the
-cluster and in an accessible location for all nodes in the cluster.  Lastly each
-program assumes that local working directory is the same on all nodes and that
-any additional databases or auxiliary files are also available on all nodes.
-
-=over 5
-
-=item I<Sun Grid Engine>
-
-In order to use SGE you need to ensure that your shell environment is setup
-correctly.  In most cases your system administrator should already have provided
-local system settings in your login files.  You can check to see if your
-settings are correct by examining your environment for any variables beginning
-with the name "SGE_".  (The command 'env | grep SGE' is useful here)
 
 =head1 JOB EXECUTION
 
-All of these programs will print a job identifier for each search job submitted
-and write a "<input file>.<program>.qjob" job id file.  When the job completes
-(or an error occurs) its corresponding job id file is normally deleted. See the 
-Sun Grid Engine's qsub command manual for more information about the format of 
-the job id and how to use them.  In some rare cases the job id file might not
-be deleted.  In such cases the job id files can either be manually deleted or
-you can just resubmit the job and it will be updated automatically.
+For each specified input file, this program will
+write a "<input file root>.<program>.qsub" file that contain the instructions
+to be executed on the cluster.  When the job is launched, the scheduler will
+create a "<input file root>.<program>.qjob" file what provides the id of the
+job. this file is deleted when the job completes.
 
-Each search program's output (both STDOUT and STDERR) will be captured in a 
-job specific "<input file>.<program>.qlog" file.  This file is written by the
-grid software when the job finishes.
+The job's STDOUT and STDERR will be captured in a 
+job specific "<input file>.<program>.qstderr" file and
+"<input file>.<program>.qstout" file.  These files are written by the
+cluster scheduler as the job runs.
 
 =head1 EXAMPLE 
 
-To run a search on the cluster you'll need to provide two things, a search 
-parameters file and one or more mzML formatted files containing MS/MS 
-spectrum data. 
-
-So for example:
+To convert a timsTOF .d folder into an mzML file:
 
 =over 5
 
-S<qtandem -p tandem.params mydata.mzML>
+S<cd /proteomics/$USER/some/destination
+S<qtdf2mzml /regis/raw/facility/timsTOF1/location/of/raw/data/*.d>
 
 =back
 
-This will submit a tandem search job to the cluster for mydata.mzML in the
-current directory.  The results will be written to the file mydata.pep.xml and
-any output for the job will be captured in mydata.tandem.qlog.
+This will submit submit all of the .d folders in the specified directory
+to be converted to mzML files that will appear in the current working
+directory. When all the processing jobs are finished and possible problems
+examined, all the cluster management files may be deleted with:
 
-=head1 USING MSCONVERT
+=over 5
 
-ProteoWizard's msconvert is a program that can be used to convert MS data 
-files from one format to another.  Its commonly used to convert raw proprietary
-data formats into the open standard mzML format.  Because most conversions 
-require proprietary Window's libraries the msconvert program typically resides
-on one or more Window's server computers and is invoked using a client/server
-program produced at ISB called remoteconvert.pl.
+S<rm *.qsub *.qstderr *.qstout
 
-=head1 USING X!TANDEM 
-
-X! Tandem is an open source program produced by the Global Proteome Machine
-Organization.  The parameter file should be in the format that the program
-accepts with the only exception being that the "spectrum, path", 
-"output, path", and "output, sequence path" parameters will automatically be
-filled in with spectra specific values.
-
-=head1 USING OMSSA
-
-Because I<omssa> only accepts command line flags, a simple but effective
-parameter file format was devised.  This format is based on the command flags
-whereas each line is simply the command flag and value. Comments can be included
-in the file using the '#' character. 
-
-=head1 USING INSPECT  
-
-InsPect is was developed at the University of California, San Diego.
-You'll have to install this program locally on your cluster and ensure that
-the program is in your path. The location of the resource files used by 
-I<inspect> will be inferred by the location of the program itself as this
-is the typical setup for a installation.
-
-Parameter values should be specified in a single inspect.params file following
-the standard I<inspect> format with the only exception being that the name
-of the spectra file is ignored.  The I<qinspect> script will create a 
-specific input file for each spectrum using inspect.params as a template and
-replacing the "spectra,(.*)" line with the name of the spectra file.
-
-=head1 USING MYRIMATCH 
-
-Parameter values should be specified in a single myrimatch.params file following
-the standard I<myrimatch> format with the only exception being that the name
-of the spectra file is ignored.  The I<qmyrimatch> script will create a 
-specific input file for each spectrum using myrimatch.params as a template and
-replacing the "spectra,(.*)" line with the name of the spectra file.
-
-=head1 USING MASCOT
-
-Mascot is a commercial search engine produced by Matrix Science.  Unlike the
-other search engines, the actual execution of mascot isn't executed locally on 
-the cluster but but instead is expected to be run on a separate Mascot server.
-The I<qmascot> script submits jobs and retrieves results via HTTP calls.  The 
-files are first converted into mgf format and the results dta files are 
-converted to  pep.xml.
-
-Note that since this conversion requires the database file from the server, this
-file will automatically be downloaded and placed in the current directory 
-alongside the results.
-
-The parameter file should be in the same "mgf" format that Mascot accepts (but
-without any actual spectrum values).  I<qmascot> will automatically merge the
-parameter values into each mgf file before submitting the search to the mascot
-server.
+=back
 
 =head1 ADDITIONAL RESOURCES
 
-=item L<http://gridengine.sunsource.net/>
+=item L<https://github.com/edeutsch/qscripts>
 
-Sun Grid Engine project.
-
-=item L<http://www.thegpm.org/tandem/index.html>
-
-X!Tandem  open source software.
-
-=item L<http://pubchem.ncbi.nlm.nih.gov/omssa/>
-
-The Open Mass Spectrometry Search Algorithm [OMSSA]
-
-=item L<http://proteomics.ucsd.edu/>
-
-InsPecT: A Proteomics Search Toolkit
-
-=item L<http://fenchurch.mc.vanderbilt.edu/bumbershoot/myrimatch/index.html>
-
-The MyriMatch MS-MS database search program. 
-
-=item L<http://matrixscience.com>
-
-Matrix Science's mascot MS-MS search program.
+Original GitHub repo for this code
 
 =head1 AUTHORS
 
-Joe Slagel E<lt>jslagel@systemsbiology.orgE<gt>
+Eric Deutsch E<lt>edeutsch@systemsbiology.orgE<gt>
 
 =cut
 
