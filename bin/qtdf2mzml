@@ -271,7 +271,9 @@ Prints information as files are queued up for processing
 Purge the destination files if they already exist. They will be deleted
 on the head node before the job is submitted instead of as part of the job.
 Without this flag, if the intended output file already exists, then
-processing is skipped.
+processing is skipped for that file. This means that if *.d matches some
+msruns that have been converted and some that have not, only the ones that
+have not yet been converted will be submitted.
 
 =item B<-o,--out-dir DIR>
 
@@ -307,19 +309,19 @@ To convert a timsTOF .d folder into an mzML file:
 
 =over 5
 
-S<cd /proteomics/$USER/some/destination
+S<cd /proteomics/$USER/some/destination>
 S<qtdf2mzml /regis/raw/facility/timsTOF1/location/of/raw/data/*.d>
 
 =back
 
-This will submit submit all of the .d folders in the specified directory
+This will submit submit all of the msruns matching *.d in the specified directory
 to be converted to mzML files that will appear in the current working
 directory. When all the processing jobs are finished and possible problems
 examined, all the cluster management files may be deleted with:
 
 =over 5
 
-S<rm *.qsub *.qstderr *.qstout
+S<rm *.qsub *.qstderr *.qstdout>
 
 =back
 
