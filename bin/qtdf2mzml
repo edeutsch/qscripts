@@ -63,6 +63,26 @@ fi
    
 # -----------------------------------------------------------------------------
 
+function usage() {
+   [ "$1" ] && echo "$(basename $0): $*" 1>&2
+   echo "Usage:"
+   echo "$(basename $0) [options] $EXTS [-- [sbatch options]]"
+   echo
+   echo "Options:"
+   echo "   -h, --help          Show this usage information"
+   echo "   -m, --manual        Show more detailed documentation"
+   echo "   -v, --verbose       Print out information as jobs are prepared"
+   echo "   -p,--purge          Purge expected output files if they exist (default is to skip)"
+   echo "   -o,--out-dir <dir>  Destination directory for output files (defaults to current working directory)"
+   echo "   -q,--queue <queue>  Name of the queue to which the jobs will be submitted (urgent, active, slow)"
+   echo
+   echo "   [sbatch options]      all flags following '--' are passed to sbatch"
+   echo
+   exit 1
+}
+
+# -----------------------------------------------------------------------------
+
 function parse_options() {
    PERMITTED_EXTENSIONS=$1; shift
    
@@ -75,10 +95,10 @@ function parse_options() {
          break
          ;;
       -h|--help)
-         search_usage
+         usage
          ;;
       -m|--man)
-         POD=`dirname $0`/qgrid_functions
+         POD=$0
          pod2man -n 'HPC TOOLS' -r 'HPC TOOLS' \
             -c 'Trans-Proteomic Pipeline (TPP)' $POD | nroff -man | less
          exit
@@ -91,23 +111,27 @@ function parse_options() {
          O_OPT="$2"
          shift 2
          ;;
+      -p|--purge)
+         P_OPT="true"
+         shift
+         ;;
       -v|--verbose)
          V_OPT="true"
          shift
          ;;
       -*)
-         search_usage "invalid option $1"
+         usage "invalid option $1"
          ;;
       *)
-         eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) search_usage "invalid file $1";; esac"
-         [ -d "$1" ] || search_usage "$1 directory not found"
+         eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) usage "invalid file $1";; esac"
+         [ -d "$1" ] || usage "$1 directory not found"
          INPUTS+=" $1"
          shift
          ;;
       esac
    done
 
-   [ -z "$INPUTS" ]  && search_usage "Error missing one or more input files"
+   [ -z "$INPUTS" ]  && usage "Error missing one or more input files"
 
    #### If no output directory is specified, use the current working directory `pwd`
    if [ -z "$O_OPT" ]; then
@@ -129,17 +153,10 @@ function parse_options() {
    true                 # return "status"
 }
 
-#
-# Check parameter file if there is one
-#
-function check_params() {
-
-   QSUBFLAGS="-pe shm 16 ${QSUBFLAGS}"
-
-}
+# -----------------------------------------------------------------------------
 
 #
-# List of commands to run in the qsub script.  Commands are echo'ed out and
+# Create the commands to run in the qsub script.  Commands are echo'ed out and
 # are intended to be read in by the qsubmit() function.
 #
 function setcmds() {
@@ -148,7 +165,7 @@ function setcmds() {
    
    # Remove possible previous log files
    if [ ! -z $V_OPT ]; then
-      echo "INFO: Remove previous output files if they exist"
+      echo "INFO: Remove previous queueing files if they exist"
    fi
    rm -f $odir$root.$prog.q*
 
@@ -158,6 +175,9 @@ function setcmds() {
 
       #### If the PURGE option is specified, then delete it
       if [ ! -z "$P_OPT" ]; then
+         if [ ! -z $V_OPT ]; then
+            echo "INFO: Purge output file $odir$root.mzML"
+         fi
          rm -f $odir$root.mzML
       #### Else we will skip this file
       else
@@ -189,14 +209,241 @@ EOF
 
 
 # -- Main ----------------------------------------------------------------------
-if [ "$HOST" == "regis" ]; then
-  source qgrid_functions
-fi
 if [ "$HOST" == "regis12" ]; then
   source /proteomics/sw/qscripts/lib/slurm_functions
 fi
 
 parse_options '*.d' $*
-check_params
+
+QSUBFLAGS="-pe shm $NP ${QSUBFLAGS}"
+
 submit_jobs
 
+
+
+# -- POD DOCUMENTATION ------------------------------------------------------
+#
+# Documentation for wrappers.  Uses pod with a shell trick.  Simply run
+# pod2man on this file to get the documentation.
+#
+: <<POD
+
+=head1 NAME
+
+qtdf2mzml  - Convert timsTOF raw data (.d folders) to mzML files
+
+=head1 SYNOPSIS            
+
+qtdf2mzml [options] <input files> [-- [sbatch options]]
+
+Common Options:
+   -h, --help           display brief usage and exit
+   -m, --man            display this help and exit
+   -v, --verbose        display information as files are queued
+   -p,--purge           Purge expected output files if they exist (default is to skip)"
+   -o,--out-dir <dir>   Destination directory for output files (defaults to current working directory)"
+   -q,--queue <queue>   Name of the queue to which the jobs will be submitted (urgent, active, slow)"
+    [qsub options]         all options following '--' are passed to qsub
+    
+=head1 DESCRIPTION
+
+Collection of wrapper programs which can be used to submit different kinds
+of proteomics programs to a Sun Grid Engine cluster.
+
+=head1 COMMON OPTIONS
+
+=over 5
+
+=item B<-h, --help>
+
+Print a brief help message and exit.
+
+=item B<-m, --man>
+
+Prints this manual page
+
+=item B<-- [qsub options]>
+
+Any options following a "--" designator will be used as additional parameters to
+the qsub command.  So for example to change the queue that the job is submitted
+to you could run the command "qtandem *.mzML -- -q serial". Or to send you 
+an email when the job completes you could use "qomssa *.mzML -- -m ae".
+
+Please see the man page for the qsub command for a full explaination of all of
+the possible options.
+
+
+=head1 MS/MS SEARCH IDENTIFICAION OPTIONS
+
+=item B<-p,--params FILE>
+
+Specify the parameters file to use in the search.  If not provided then the
+program will default to a file named "I<search>.params" in the local current
+directory, where I<search> is the name of the search program to invoke.
+E.g. qtandem will defaults to "tandem.params".
+
+Parameter files are expected to be in the format normally accepted by the
+search program in use with some exceptions.  Please see the specific section
+on the search program for more details about the format and these exceptions. 
+For most search programs an input specific parameters file will be created.
+These files will be named after the spectra filename and the search program, 
+for example a halo1.tandem.params will be created in the local directory for
+the file halo1.mzXML.
+
+=item B<-d,--dest DIR>
+
+Specifies the destination directory of the search results.  If the destination
+directory doesn't exist it will be created first then links to all input files
+will be placed in this destination along with all output files from the search.
+No care is taken to prevent overwriting any existing files.
+
+=back
+
+=head1 PREREQUSITES
+
+First off you can only invoke these commands on the head node of the cluster
+(or any system that has permissions to submit jobs to the cluster). Secondly,
+these programs require the appropriate search programs be installed on the
+cluster and in an accessible location for all nodes in the cluster.  Lastly each
+program assumes that local working directory is the same on all nodes and that
+any additional databases or auxiliary files are also available on all nodes.
+
+=over 5
+
+=item I<Sun Grid Engine>
+
+In order to use SGE you need to ensure that your shell environment is setup
+correctly.  In most cases your system administrator should already have provided
+local system settings in your login files.  You can check to see if your
+settings are correct by examining your environment for any variables beginning
+with the name "SGE_".  (The command 'env | grep SGE' is useful here)
+
+=head1 JOB EXECUTION
+
+All of these programs will print a job identifier for each search job submitted
+and write a "<input file>.<program>.qjob" job id file.  When the job completes
+(or an error occurs) its corresponding job id file is normally deleted. See the 
+Sun Grid Engine's qsub command manual for more information about the format of 
+the job id and how to use them.  In some rare cases the job id file might not
+be deleted.  In such cases the job id files can either be manually deleted or
+you can just resubmit the job and it will be updated automatically.
+
+Each search program's output (both STDOUT and STDERR) will be captured in a 
+job specific "<input file>.<program>.qlog" file.  This file is written by the
+grid software when the job finishes.
+
+=head1 EXAMPLE 
+
+To run a search on the cluster you'll need to provide two things, a search 
+parameters file and one or more mzML formatted files containing MS/MS 
+spectrum data. 
+
+So for example:
+
+=over 5
+
+S<qtandem -p tandem.params mydata.mzML>
+
+=back
+
+This will submit a tandem search job to the cluster for mydata.mzML in the
+current directory.  The results will be written to the file mydata.pep.xml and
+any output for the job will be captured in mydata.tandem.qlog.
+
+=head1 USING MSCONVERT
+
+ProteoWizard's msconvert is a program that can be used to convert MS data 
+files from one format to another.  Its commonly used to convert raw proprietary
+data formats into the open standard mzML format.  Because most conversions 
+require proprietary Window's libraries the msconvert program typically resides
+on one or more Window's server computers and is invoked using a client/server
+program produced at ISB called remoteconvert.pl.
+
+=head1 USING X!TANDEM 
+
+X! Tandem is an open source program produced by the Global Proteome Machine
+Organization.  The parameter file should be in the format that the program
+accepts with the only exception being that the "spectrum, path", 
+"output, path", and "output, sequence path" parameters will automatically be
+filled in with spectra specific values.
+
+=head1 USING OMSSA
+
+Because I<omssa> only accepts command line flags, a simple but effective
+parameter file format was devised.  This format is based on the command flags
+whereas each line is simply the command flag and value. Comments can be included
+in the file using the '#' character. 
+
+=head1 USING INSPECT  
+
+InsPect is was developed at the University of California, San Diego.
+You'll have to install this program locally on your cluster and ensure that
+the program is in your path. The location of the resource files used by 
+I<inspect> will be inferred by the location of the program itself as this
+is the typical setup for a installation.
+
+Parameter values should be specified in a single inspect.params file following
+the standard I<inspect> format with the only exception being that the name
+of the spectra file is ignored.  The I<qinspect> script will create a 
+specific input file for each spectrum using inspect.params as a template and
+replacing the "spectra,(.*)" line with the name of the spectra file.
+
+=head1 USING MYRIMATCH 
+
+Parameter values should be specified in a single myrimatch.params file following
+the standard I<myrimatch> format with the only exception being that the name
+of the spectra file is ignored.  The I<qmyrimatch> script will create a 
+specific input file for each spectrum using myrimatch.params as a template and
+replacing the "spectra,(.*)" line with the name of the spectra file.
+
+=head1 USING MASCOT
+
+Mascot is a commercial search engine produced by Matrix Science.  Unlike the
+other search engines, the actual execution of mascot isn't executed locally on 
+the cluster but but instead is expected to be run on a separate Mascot server.
+The I<qmascot> script submits jobs and retrieves results via HTTP calls.  The 
+files are first converted into mgf format and the results dta files are 
+converted to  pep.xml.
+
+Note that since this conversion requires the database file from the server, this
+file will automatically be downloaded and placed in the current directory 
+alongside the results.
+
+The parameter file should be in the same "mgf" format that Mascot accepts (but
+without any actual spectrum values).  I<qmascot> will automatically merge the
+parameter values into each mgf file before submitting the search to the mascot
+server.
+
+=head1 ADDITIONAL RESOURCES
+
+=item L<http://gridengine.sunsource.net/>
+
+Sun Grid Engine project.
+
+=item L<http://www.thegpm.org/tandem/index.html>
+
+X!Tandem  open source software.
+
+=item L<http://pubchem.ncbi.nlm.nih.gov/omssa/>
+
+The Open Mass Spectrometry Search Algorithm [OMSSA]
+
+=item L<http://proteomics.ucsd.edu/>
+
+InsPecT: A Proteomics Search Toolkit
+
+=item L<http://fenchurch.mc.vanderbilt.edu/bumbershoot/myrimatch/index.html>
+
+The MyriMatch MS-MS database search program. 
+
+=item L<http://matrixscience.com>
+
+Matrix Science's mascot MS-MS search program.
+
+=head1 AUTHORS
+
+Joe Slagel E<lt>jslagel@systemsbiology.orgE<gt>
+
+=cut
+
+POD
