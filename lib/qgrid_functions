@@ -104,6 +104,7 @@ function search_usage() {
    echo "   -m, --manual        manual"
    echo "   -p,--params <file>  parameter file to use (defaults to ${PROG:-<search>}.params)"
    echo "   -o,--out-dir <dir>  destination directory for output files"
+   echo "   -s,--split <n>      number of pieces to split search into"
    echo
    echo "   [qsub options]      all flags following '--' are passed to qsub"
    echo
@@ -142,6 +143,10 @@ function search_options() {
          ;;
       -p|--params)
          P_OPT="$2"
+         shift 2
+         ;;
+      -s|--split)
+         S_OPT="$2"
          shift 2
          ;;
       -o|--out-dir)
