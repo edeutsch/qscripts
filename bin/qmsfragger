@@ -1,0 +1,154 @@
+#!/bin/bash
+#
+# Program: TPP Cluster Tools: qmsfragger
+# Authors:  Joe Slagel, David Shteynberg, Tami Leppert, Eric Deutsch
+#
+# Copyright (C) 2009-2021 Institute for Systems Biology
+# 
+# This library is free software; you can redistribute it and/or             
+# modify it under the terms of the GNU Lesser General Public                
+# License as published by the Free Software Foundation; either              
+# version 2.1 of the License, or (at your option) any later version.        
+#                                                                           
+# This library is distributed in the hope that it will be useful,           
+# but WITHOUT ANY WARRANTY; without even the implied warranty of            
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
+# General Public License for more details.                                  
+#                                                                           
+# You should have received a copy of the GNU Lesser General Public          
+# License along with this library; if not, write to the Free Software       
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# 
+# Institute for Systems Biology
+# 401 Terry Ave N
+# Seattle, WA  98109  USA
+#
+# $Id: $
+#
+
+set -e          # Tell bash to exit if any statement fails
+
+if [ -z "$HOST" ]; then
+  echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
+  exit
+fi
+
+if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
+  echo "ERROR: Please execute this from either regis (old cluster) or regis 12 (new cluster)"
+  exit
+fi 
+
+
+# -- Local settings -----------------------------------------------------------
+
+   # Default name for jobs in queue
+   QNAME=${QNAME:-}
+    
+   # Default number of maximum threads
+   MAX_PROCS=${MAX_PROCS:-80}
+
+   # Default qsub flags use 32 threads on 1 host
+   QSUBFLAGS="${QSUBFLAGS}"
+   NP=${NP:-32}
+  
+   # Programs
+   JAVA=${JAVA-`which java 2>/dev/null || echo ''`}
+   MSFRAGGER=${MSFRAGGER-/proteomics/sw/MSFragger/MSFragger-3.2-rc17/msfragger-3.2-rc17.one-jar.jar}
+
+
+# -----------------------------------------------------------------------------
+
+#
+# Read in msfragger parameters file. 
+#
+function read_params () {
+
+   NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
+   if [[ $NP -eq 0 || $NP -gt "$MAX_PROCS" ]]; then
+      die "ERROR: the num_threads parameter in your msfragger.params file should be set to value between 1 and $MAX_PROCS"
+   fi
+
+   DATABASENAME=$(perl -ne 'print $1 if /^\s*database_name\s*=\s*(\S+)/' $P_OPT)
+   if [ -z $DATABASENAME ]; then
+      die "ERROR: the database_name parameter in your msfragger.params file needs to be present"
+   fi
+   if [ ! -f $DATABASENAME ]; then
+      die "ERROR: the database_name specified in msfragger.params file '$DATABASENAME' cannot be found"
+   fi
+
+   NPROCSFLAG=shm
+   if [ "$HOST" == "regis" ]; then
+     NPROCSFLAG=serial
+   fi
+
+
+   QSUBFLAGS="-pe ${NPROCSFLAG} ${NP} ${QSUBFLAGS}"
+}
+
+#
+# List of commands to run in the qsub script.  Commands are echo'ed out and
+# are intended to be read in by the qsubmit() function.
+#
+function setcmds() {
+
+   prog=msfragger
+   
+   params="$(rel2abs $P_OPT)"
+
+   # Remove previous results
+   rm -f $odir$root.pep.xml  $odir$root.$prog.qlog
+
+   REQUESTGB=80
+   if [ "$HOST" == "regis12" ]; then
+     REQUESTGB=60
+   fi
+
+   # If there is no splitting or split is 1, then just run msfragger directly
+   if [[ -z $S_OPT || $S_OPT -eq 0 || $S_OPT -eq 1 ]]; then
+     cmds=$(cat <<EOF
+cd '${odir:-$PWD}'
+/bin/java -Xmx${REQUESTGB}G -jar $MSFRAGGER $params $file
+mv $root.pepXML $root.pep.xml
+
+EOF
+)
+
+   else
+
+     cmds=$(cat <<EOF
+cd '${odir:-$PWD}'
+python3 /proteomics/sw/bin/msfragger_pep_split.py $S_OPT "/bin/java -Xmx${REQUESTGB}G -jar" $MSFRAGGER $params $file
+mv $root.pepXML $root.pep.xml
+updatepaths.pl -d $DATABASENAME $root.pep.xml
+replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
+
+EOF
+)
+
+fi
+
+}
+
+
+# -- Main ----------------------------------------------------------------------
+
+if [ "$HOST" == "regis" ]; then
+  source qgrid_functions
+fi
+if [ "$HOST" == "regis12" ]; then
+  source slurm_functions
+fi
+
+# Check for necessary programs
+[ -x "${JAVA}" ] || die "ERROR: There is no java in your PATH"
+
+search_options msfragger.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
+read_params
+
+# For testing, just print out the commands that would be run for each mzML
+#setcmds
+#echo $cmds
+
+submit_jobs
+
+exit 0
