@@ -52,14 +52,17 @@ fi
    MAX_PROCS=${MAX_PROCS:-80}
 
    # Set the number of processors
-   NP=${NP:-16}
+   NP=${NP:-1}
 
    # Default qsub flags use 80 threads on 1 host (if num_threads = 0)
    QSUBFLAGS="${QSUBFLAGS}"
    
+   # Set the GRES for this job type
+   GRES="${GRES:-ioslots:generic:50}"
+   
    # Programs
    EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
-   LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml:/usr/lib/x86_64-linux-gnu
+   LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml
    
 # -----------------------------------------------------------------------------
 
@@ -195,7 +198,8 @@ function setcmds() {
     cmds=$(cat <<EOF
    
 export LD_LIBRARY_PATH=$LIBRARY_PATH
-$EXECUTABLE -i $file -o $odir$root.mzML
+export LC_ALL=C
+$EXECUTABLE --ms1_type centroid --compression zlib -i $file -o $odir$root.mzML
 
 EOF
 )
@@ -215,7 +219,8 @@ fi
 
 parse_options '*.d' $*
 
-QSUBFLAGS="-pe shm $NP ${QSUBFLAGS}"
+#### QSUBFLAGS is not used any more
+#QSUBFLAGS="-pe shm $NP ${QSUBFLAGS}"
 
 submit_jobs
 
