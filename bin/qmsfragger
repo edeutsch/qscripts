@@ -107,6 +107,7 @@ function setcmds() {
    if [[ -z $S_OPT || $S_OPT -eq 0 || $S_OPT -eq 1 ]]; then
      cmds=$(cat <<EOF
 cd '${odir:-$PWD}'
+export LC_ALL=C
 /bin/java -Xmx${REQUESTGB}G -jar $MSFRAGGER $params $file
 mv $root.pepXML $root.pep.xml
 
