@@ -41,8 +41,6 @@
 # Feel free to modify these variables as needed for your site.
 #
 
-   echo "INFO: Sourcing dev slurm_functions"
-
    # Default name of the job
    QNAME=${QNAME:-$(basename $0)}
    
@@ -169,16 +167,18 @@ function search_options() {
          ;;
       *)
          eval "case "$1" in $EXTS) ;; *) search_usage "invalid file $1";; esac"
-         [ -f "$1" ] || search_usage "$1 file not found"
+         [ -f "$1" ] || die "$1 file not found"
          INPUTS+=" $1"
          shift
          ;;
       esac
    done
-   [ -z "$P_OPT" ]   && search_usage "Missing required <search>.params file"
-   [ -f "$P_OPT" ]   || search_usage "Error '$P_OPT' parameters file not found"
-   [ -z "$INPUTS" ]  && search_usage "Error missing one or more input files"
-   if [ ! -z "$O_OPT" ]; then
+
+   [ -z "$INPUTS" ] && die "ERROR: missing one or more input files"
+   [ -z "$P_OPT" ] && search_usage "Missing required <search>.params file"
+   [ -f "$P_OPT" ] || search_usage "Error '$P_OPT' parameters file not found"
+
+if [ ! -z "$O_OPT" ]; then
       mkdir -p "$O_OPT"
       O_OPT=$(rel2abs "$O_OPT")
    fi
