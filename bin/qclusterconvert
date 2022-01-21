@@ -188,7 +188,7 @@ function setcmds() {
    fi
 
    #### Define the commands to execute for timsTOF TDF
-   if [ ${file:(-2)} == ".d"]; then
+   if [ "${file:(-2)}" == ".d" ]; then
      cmds=$(cat <<EOF
    
 export LD_LIBRARY_PATH=$TDF_LIBRARY_PATH
