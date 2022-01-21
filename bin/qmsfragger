@@ -24,10 +24,10 @@
 #
 
 #### Import a common set of functions
-qscript_functions
+source qscript_functions
 
 #### Verify the hosts that this can be run on
-assert_old_or_new_cluster_head_node()
+assert_old_or_new_cluster_head_node
 
 
 # -- Local settings -----------------------------------------------------------
