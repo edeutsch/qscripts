@@ -1,40 +1,31 @@
 #!/bin/bash
 #
-# Program: TPP HPC Tools
-# Author:  Joe Slagel
+# Program: slurm_functions
+# Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2012 by Joseph Slagel
+# Copyright (C) 2009-2022 by Eric Deutsch
 # 
-# This library is free software; you can redistribute it and/or             
-# modify it under the terms of the GNU Lesser General Public                
-# License as published by the Free Software Foundation; either              
-# version 2.1 of the License, or (at your option) any later version.        
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
 #                                                                           
-# This library is distributed in the hope that it will be useful,           
-# but WITHOUT ANY WARRANTY; without even the implied warranty of            
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
-# General Public License for more details.                                  
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
 #                                                                           
-# You should have received a copy of the GNU Lesser General Public          
-# License along with this library; if not, write to the Free Software       
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
 # 
 # Institute for Systems Biology
-# 1441 North 34th St.
-# Seattle, WA  98103  USA
-# jslagel@systemsbiology.org
-#
-# $Id: $
-#
-
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
 #
 # Common BASH Shell Functions used by the set of "q" scripts used to submit
-# jobs to run some of the various TPP programs
+# jobs to the new (SLURM) cluster
 #
-# Note there are a number of different environment variables used by these
-# functions that should be set in the "q" scripts. All begin with the letter
-# "q" and the default values are set in the local settings below.
-#
+
 
 # -- Local settings -----------------------------------------------------------
 #
@@ -59,36 +50,6 @@
    # Extra commands to invoke at the end of the job
    QEXTRA=${QEXTRA-}
 
-
-# -- Functions -----------------------------------------------------------------
-
-# Simple "die" and warn functions
-function die () {
-   echo "$(basename $0): ${1:-"Unknown error"}" 1>&2
-   exit 1
-}
-
-function warn () {
-   echo "$(basename $0): ${1:-"Unknown error"}" 1>&2
-}
-
-# Turn a relative to absolute path
-# From http://unix.derkeiler.com/Newsgroups/comp.unix.programmer/2005-01/0206.html
-function rel2abs() {
-  [ "$#" -eq 1 ] || return 1
-  ls -Ld -- "$1" > /dev/null || return
-  dir=$(dirname -- "$1" && echo .) || return
-  dir=$(cd -P -- "${dir%??}" && pwd -P && echo .) || return
-  dir=${dir%??}
-  file=$(basename -- "$1" && echo .) || return
-  file=${file%??}
-  case $dir in
-    /) printf '%s\n' "/$file";;
-    /*) printf '%s\n' "$dir/$file";;
-    *) return 1;;
-  esac
-  return 0
-} 
 
 # 
 # All of the MS-MS search commands (qtandem, qinspect, ...) should have a

@@ -23,15 +23,11 @@
 # spctools@systemsbiology.org
 #
 
-if [ -z "$HOST" ]; then
-  echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
-  exit
-fi
+#### Import a common set of functions
+qscript_functions
 
-if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
-  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
-  exit
-fi
+#### Verify the hosts that this can be run on
+assert_old_or_new_cluster_head_node()
 
 
 # -- Local settings -----------------------------------------------------------
