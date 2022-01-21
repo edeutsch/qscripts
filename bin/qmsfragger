@@ -33,10 +33,10 @@ if [ -z "$HOST" ]; then
   exit
 fi
 
-if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
-  echo "ERROR: Please execute this from either regis (old cluster) or regis 12 (new cluster)"
+if [ "$HOST" != "regis" -a "$HOST" != "regis12" -a "$HOST" != "regis-dev-new" ]; then
+  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
   exit
-fi 
+fi
 
 
 # -- Local settings -----------------------------------------------------------
@@ -136,7 +136,7 @@ fi
 if [ "$HOST" == "regis" ]; then
   source qgrid_functions
 fi
-if [ "$HOST" == "regis12" ]; then
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ]; then
   source slurm_functions
 fi
 
