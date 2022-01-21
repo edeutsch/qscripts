@@ -1,0 +1,372 @@
+#!/bin/bash
+#
+# Program: qclusterconvert
+# Author:  Eric Deutsch
+#
+# Copyright (C) 2009-2022 by Eric Deutsch
+# 
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
+#                                                                           
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
+#                                                                           
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
+# 
+# Institute for Systems Biology
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
+#
+
+
+# Tell bash to exit if any statement fails
+set -e
+
+if [ -z "$HOST" ]; then
+  echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
+  exit
+fi
+
+#if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
+#  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+#  exit
+#fi
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
+  echo "ERROR: Please execute this from a new cluster submission host such as regis12"
+  exit
+fi
+
+
+# -- Local settings -----------------------------------------------------------
+
+   # Default name for jobs in queue
+   QNAME=${QNAME:-}
+
+   # Default project to submit jobs to
+   QPROJECT=${QPROJECT:-}
+
+   # Limit to the number of cores (threads)
+   MAX_PROCS=${MAX_PROCS:-80}
+
+   # Default number of cores (threads) for one job
+   NP=${NP:-1}
+
+   # Default qsub flags
+   QSUBFLAGS="${QSUBFLAGS:-}"
+
+   # Set the 'ioslots' resource needed for this type of job
+   GRES="${GRES:-ioslots:generic:50}"
+
+   # Programs
+   TDF_EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
+   TDF_LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml
+
+   TRFC_EXECUTABLE=/proteomics/sw/ThermoRawFileParser/current/ThermoRawFileParser.exe
+
+# -----------------------------------------------------------------------------
+
+function usage() {
+   [ "$1" ] && echo "$(basename $0): $*" 1>&2
+   echo "Usage:"
+   echo "$(basename $0) [options] $EXTS [-- [sbatch options]]"
+   echo
+   echo "Options:"
+   echo "   -h, --help          Show this usage information"
+   echo "   -m, --manual        Show more detailed documentation"
+   echo "   -v, --verbose       Print out information as jobs are prepared"
+   echo "   -p,--purge          Purge expected output files if they exist (default is to skip)"
+   echo "   -o,--out-dir <dir>  Destination directory for output files (defaults to current working directory)"
+   echo "   -q,--queue <queue>  Name of the queue to which the jobs will be submitted (urgent, active, slow)"
+   echo
+   echo "   [sbatch options]      all flags following '--' are passed to sbatch"
+   echo
+   exit 1
+}
+
+# -----------------------------------------------------------------------------
+
+function parse_options() {
+   PERMITTED_EXTENSIONS=$1; shift
+   
+   INPUTS=
+   while [ "$1" ]; do
+      case "$1" in 
+      --)
+         shift
+         QSUBFLAGS+=" $*"
+         break
+         ;;
+      -h|--help)
+         usage
+         ;;
+      -m|--man)
+         POD=$0
+         pod2man -n 'HPC TOOLS' -r 'HPC TOOLS' \
+            -c 'Trans-Proteomic Pipeline (TPP)' $POD | nroff -man | less
+         exit
+         ;;
+      -q|--queue)
+         Q_OPT="$2"
+         shift 2
+         ;;
+      -o|--out-dir)
+         O_OPT="$2"
+         shift 2
+         ;;
+      -p|--purge)
+         P_OPT="true"
+         shift
+         ;;
+      -v|--verbose)
+         V_OPT="true"
+         shift
+         ;;
+      -*)
+         usage "invalid option $1"
+         ;;
+      *)
+         eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) usage "invalid file $1";; esac"
+         [ -d "$1" ] || usage "$1 directory not found"
+         INPUTS+=" $1"
+         shift
+         ;;
+      esac
+   done
+
+   [ -z "$INPUTS" ]  && usage "Error missing one or more input files"
+
+   #### If no output directory is specified, use the current working directory `pwd`
+   if [ -z "$O_OPT" ]; then
+      O_OPT=`pwd`
+
+   #### Else if it is specified, try to create in case it doesn't exist
+   else
+      mkdir -p "$O_OPT"
+      O_OPT=$(rel2abs "$O_OPT")
+   fi
+
+   #### Set the QQUEUE value
+   if [ ! -z "$Q_OPT" ]; then
+      QQUEUE=$Q_OPT
+   else
+      QQUEUE=active
+   fi
+
+   true                 # return "status"
+}
+
+# -----------------------------------------------------------------------------
+
+#
+# Create the commands to run in the qsub script.  Commands are echo'ed out and
+# are intended to be read in by the qsubmit() function.
+#
+function setcmds() {
+
+   prog=convert
+   
+   # Remove possible previous log files
+   if [ ! -z $V_OPT ]; then
+      echo "INFO: Remove previous queueing files if they exist"
+   fi
+   rm -f $odir$root.$prog.q*
+
+   #### If the output file already exists
+   skip="false"
+   if [ -f $odir$root.mzML ]; then
+
+      #### If the PURGE option is specified, then delete it
+      if [ ! -z "$P_OPT" ]; then
+         if [ ! -z $V_OPT ]; then
+            echo "INFO: Purge output file $odir$root.mzML"
+         fi
+         rm -f $odir$root.mzML
+      #### Else we will skip this file
+      else
+         echo "INFO: Output already exists. Skip $file"
+         skip="true"
+      fi
+   fi
+
+   if [ "$skip" == "true" ]; then
+     cmds=
+     return
+   fi
+
+   #### Define the commands to execute for timsTOF TDF
+   if [ ${file:(-2)} == ".d"]; then
+     cmds=$(cat <<EOF
+   
+export LD_LIBRARY_PATH=$TDF_LIBRARY_PATH
+export LC_ALL=C
+$TDF_EXECUTABLE --ms1_type centroid --compression zlib -i $file -o $odir$root.mzML
+
+EOF
+)
+
+   fi
+
+   #### Define the commands to execute for Thermo RAW
+   if [ ${file:(-4)} == ".raw"] || [ ${file:(-4)} == ".RAW"]; then
+     cmds=$(cat <<EOF
+   
+mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${root}-meta.txt
+
+EOF
+)
+
+    fi
+
+   #### If verbose, show the commands
+   if [ ! -z $V_OPT ]; then
+      echo "INFO: Will execute the following on a cluster node:$cmds"
+   fi
+
+}
+
+
+# -- Main ----------------------------------------------------------------------
+
+# Set up the appropriate common functions
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
+  source slurm_functions
+fi
+
+# Set up for all input files
+parse_options '*.d|*.raw|*.RAW' $*
+
+# For testing, just print out the commands that would be run
+if [ ! -z ${TESTMODE} ]; then
+  setcmds
+  echo $cmds
+else
+  submit_jobs
+fi
+
+exit 0
+
+
+
+# -- POD DOCUMENTATION ------------------------------------------------------
+#
+# Documentation for wrappers.  Uses pod with a shell trick.  Simply run
+# pod2man on this file to get the documentation.
+#
+: <<POD
+
+=head1 NAME
+
+qclusterconvert  - Convert timsTOF raw data (.d folders) and Thermo RAW files to mzML files on the cluster
+
+=head1 SYNOPSIS            
+
+qtdf2mzml [options] <input files> [-- [sbatch options]]
+
+Common Options:
+   -h, --help           display brief usage and exit
+   -m, --man            display this help and exit
+   -v, --verbose        display information as files are queued
+   -p,--purge           Purge expected output files if they exist (default is to skip)"
+   -o,--out-dir <dir>   Destination directory for output files (defaults to current working directory)"
+   -q,--queue <queue>   Name of the queue to which the jobs will be submitted (urgent, active, slow)"
+    [qsub options]         all options following '--' are passed to qsub
+    
+=head1 DESCRIPTION
+
+Submit one or more Bruker timsTOF raw msruns in the form of .d folders
+or Thermo raw files (.raw or .RAW)
+to the cluster nodes to be converted to mzML.
+
+=head1 OPTIONS
+
+=over 5
+
+=item B<-h, --help>
+
+Print a brief help message and exit.
+
+=item B<-m, --man>
+
+Prints this manual page
+
+=item B<-v, --verbose>
+
+Prints information as files are queued up for processing
+
+=item B<-p,--purge>
+
+Purge the destination files if they already exist. They will be deleted
+on the head node before the job is submitted instead of as part of the job.
+Without this flag, if the intended output file already exists, then
+processing is skipped for that file. This means that if *.d matches some
+msruns that have been converted and some that have not, only the ones that
+have not yet been converted will be submitted.
+
+=item B<-o,--out-dir DIR>
+
+Specifies the destination directory of the processing results.  If the destination
+directory doesn't exist, it will be created first and output files
+will be placed in this destination.
+
+=item B<-- [qsub options]>
+
+Any options following a "--" designator will be used as additional parameters to
+the sbatch command.  This is for advanced usage only.
+Please see the man page for the sbatch command for a full explaination of all of
+the possible options.
+
+=back
+
+=head1 JOB EXECUTION
+
+For each specified input file, this program will
+write a "<input file root>.<program>.qsub" file that contain the instructions
+to be executed on the cluster.  When the job is launched, the scheduler will
+create a "<input file root>.<program>.qjob" file what provides the id of the
+job. this file is deleted when the job completes.
+
+The job's STDOUT and STDERR will be captured in a 
+job specific "<input file>.<program>.qstderr" file and
+"<input file>.<program>.qstout" file.  These files are written by the
+cluster scheduler as the job runs.
+
+=head1 EXAMPLE 
+
+To convert a timsTOF .d folder into an mzML file:
+
+=over 5
+
+S<cd /proteomics/$USER/some/destination>
+S<qtdf2mzml /regis/raw/facility/timsTOF1/location/of/raw/data/*.d>
+
+=back
+
+This will submit submit all of the msruns matching *.d in the specified directory
+to be converted to mzML files that will appear in the current working
+directory. When all the processing jobs are finished and possible problems
+examined, all the cluster management files may be deleted with:
+
+=over 5
+
+S<rm *.qsub *.qstderr *.qstdout>
+
+=back
+
+=head1 ADDITIONAL RESOURCES
+
+=item L<https://github.com/edeutsch/qscripts>
+
+Original GitHub repo for this code
+
+=head1 AUTHORS
+
+Eric Deutsch E<lt>edeutsch@systemsbiology.orgE<gt>
+
+=cut
+
+POD
