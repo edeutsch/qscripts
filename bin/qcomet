@@ -1,39 +1,37 @@
 #!/bin/bash
 #
-# Program: TPP HPC Tools
-# Author:  Joe Slagel
+# Program: qcomet
+# Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2012 by Joseph Slagel
+# Copyright (C) 2009-2022 by Eric Deutsch
 # 
-# This library is free software; you can redistribute it and/or             
-# modify it under the terms of the GNU Lesser General Public                
-# License as published by the Free Software Foundation; either              
-# version 2.1 of the License, or (at your option) any later version.        
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
 #                                                                           
-# This library is distributed in the hope that it will be useful,           
-# but WITHOUT ANY WARRANTY; without even the implied warranty of            
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
-# General Public License for more details.                                  
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
 #                                                                           
-# You should have received a copy of the GNU Lesser General Public          
-# License along with this library; if not, write to the Free Software       
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
 # 
 # Institute for Systems Biology
-# 1441 North 34th St.
-# Seattle, WA  98103  USA
-# jslagel@systemsbiology.org
-#
-# $Id: $
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
 #
 
-set -e          # Tell bash to exit if any statement fails
+# Tell bash to exit if any statement fails
+set -e
+
 if [ -z "$HOST" ]; then
   echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
   exit
 fi
 
-if [ "$HOST" != "regis" -a "$HOST" != "regis12" -a "$HOST" != "regis-dev-new" ]; then
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
   echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
   exit
 fi
@@ -41,42 +39,58 @@ fi
 
 # -- Local settings -----------------------------------------------------------
 
+   # Set TESTMODE to some value to do everything but actually submit the jobs
+   TESTMODE=${TESTMODE:-}
+
    # Default name for jobs in queue
    QNAME=${QNAME:-}
-    
+
    # Default project to submit jobs to
    QPROJECT=${QPROJECT:-}
 
-   # Default number of maximum processors (threads)
+   # Limit to the number of cores (threads)
    MAX_PROCS=${MAX_PROCS:-80}
 
-   # Default qsub flags use 80 threads on 1 host (if num_threads = 0)
-   QSUBFLAGS="${QSUBFLAGS}"
-   
+   # Default number of cores (threads) for one job
+   NP=${NP:-32}
+
+   # Default qsub flags
+   QSUBFLAGS="${QSUBFLAGS:-}"
+
    # Programs
    COMET=${COMET-`which comet 2>/dev/null`}
    INTERACTPARSER=${INTERACTPARSER-$(which InteractParser || true)}
-   
+
+
 # -----------------------------------------------------------------------------
 
 #
 # Check parameter file 
 #
 function check_params() {
+
    NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
    if [[ $NP -gt "$MAX_PROCS" ]]; then
-      die "Error num_threads parameter should be set to value between 0 and $MAX_PROCS"
+      die "ERROR: num_threads parameter in your comet.params should be set to value between 0 and $MAX_PROCS"
+   fi
+
+   DATABASENAME=$(perl -ne 'print $1 if /^\s*database_name\s*=\s*(\S+)/' $P_OPT)
+   if [ -z $DATABASENAME ]; then
+      die "ERROR: the database_name parameter in your comet.params file needs to be present"
+   fi
+   if [ ! -f $DATABASENAME ]; then
+      die "ERROR: the database_name specified in comet.params file '$DATABASENAME' cannot be found"
    fi
 
    PEPXML=$(perl -ne 'print $1 if /^\s*output_pepxmlfile\s*=\s*(\d+)/' $P_OPT)
    if [[ $PEPXML -ne 1 ]]; then
-      die "Error output_pepxml parameter should be set to 1"
+      die "ERROR: output_pepxml parameter should be set to 1"
    fi
 
    if [[ $NP -eq 0 ]]; then
-       QSUBFLAGS="-pe serial ${MAX_PROCS}"
+       QSUBFLAGS="-pe serial ${MAX_PROCS} ${QSUBFLAGS}"
    else
-       QSUBFLAGS="-pe serial ${NP}"
+       QSUBFLAGS="-pe serial ${NP} ${QSUBFLAGS}"
    fi
 }
 
@@ -110,17 +124,28 @@ EOF
 
 
 # -- Main ----------------------------------------------------------------------
+
+# Set up the appropriate common functions
 if [ "$HOST" == "regis" ]; then
   source qgrid_functions
 fi
-if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ]; then
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
   source slurm_functions
 fi
 
-
 # Check for necessary programs
-[ -x "${COMET}" ] || die "Error no comet in your path"
+[ -x "${COMET}" ] || die "ERROR: No comet in your PATH"
 
+# Set up for all input files
 search_options comet.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
 check_params
-submit_jobs
+
+# For testing, just print out the commands that would be run
+if [ ! -z ${TESTMODE} ]; then
+  setcmds
+  echo $cmds
+else
+  submit_jobs
+fi
+
+exit 0

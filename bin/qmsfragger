@@ -1,39 +1,37 @@
 #!/bin/bash
 #
-# Program: TPP Cluster Tools: qmsfragger
-# Authors:  Joe Slagel, David Shteynberg, Tami Leppert, Eric Deutsch
+# Program: qcomet
+# Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2021 Institute for Systems Biology
+# Copyright (C) 2009-2022 by Eric Deutsch
 # 
-# This library is free software; you can redistribute it and/or             
-# modify it under the terms of the GNU Lesser General Public                
-# License as published by the Free Software Foundation; either              
-# version 2.1 of the License, or (at your option) any later version.        
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
 #                                                                           
-# This library is distributed in the hope that it will be useful,           
-# but WITHOUT ANY WARRANTY; without even the implied warranty of            
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
-# General Public License for more details.                                  
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
 #                                                                           
-# You should have received a copy of the GNU Lesser General Public          
-# License along with this library; if not, write to the Free Software       
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
 # 
 # Institute for Systems Biology
-# 401 Terry Ave N
-# Seattle, WA  98109  USA
-#
-# $Id: $
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
 #
 
-set -e          # Tell bash to exit if any statement fails
+# Tell bash to exit if any statement fails
+set -e
 
 if [ -z "$HOST" ]; then
   echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
   exit
 fi
 
-if [ "$HOST" != "regis" -a "$HOST" != "regis12" -a "$HOST" != "regis-dev-new" ]; then
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
   echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
   exit
 fi
@@ -41,19 +39,27 @@ fi
 
 # -- Local settings -----------------------------------------------------------
 
-   # Default name for jobs in queue
-   QNAME=${QNAME:-}
-    
-   # Default number of maximum threads
-   MAX_PROCS=${MAX_PROCS:-80}
+  # Set TESTMODE to some value to do everything but actually submit the jobs
+  TESTMODE=${TESTMODE:-}
 
-   # Default qsub flags use 32 threads on 1 host
-   QSUBFLAGS="${QSUBFLAGS}"
-   NP=${NP:-32}
+  # Default name for jobs in queue
+  QNAME=${QNAME:-}
+
+  # Default project to submit jobs to
+  QPROJECT=${QPROJECT:-}
+
+  # Limit to the number of cores (threads)
+  MAX_PROCS=${MAX_PROCS:-256}
+
+  # Default number of cores (threads) for one job
+  NP=${NP:-32}
+
+  # Default qsub flags
+  QSUBFLAGS="${QSUBFLAGS:-}"
   
-   # Programs
-   JAVA=${JAVA-`which java 2>/dev/null || echo ''`}
-   MSFRAGGER=${MSFRAGGER-/proteomics/sw/MSFragger/MSFragger-3.2-rc17/msfragger-3.2-rc17.one-jar.jar}
+  # Programs
+  JAVA=${JAVA-`which java 2>/dev/null || echo ''`}
+  MSFRAGGER=${MSFRAGGER-/proteomics/sw/MSFragger/MSFragger-3.2-rc17/msfragger-3.2-rc17.one-jar.jar}
 
 
 # -----------------------------------------------------------------------------
@@ -61,29 +67,34 @@ fi
 #
 # Read in msfragger parameters file. 
 #
-function read_params () {
+function check_params() {
 
-   NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
-   if [[ $NP -eq 0 || $NP -gt "$MAX_PROCS" ]]; then
-      die "ERROR: the num_threads parameter in your msfragger.params file should be set to value between 1 and $MAX_PROCS"
-   fi
+  if [ ${QNAME} == "xlarge" ]; then
+    MAX_PROCS=256
+  else
+    MAX_PROCS=80
+  fi
 
-   DATABASENAME=$(perl -ne 'print $1 if /^\s*database_name\s*=\s*(\S+)/' $P_OPT)
-   if [ -z $DATABASENAME ]; then
-      die "ERROR: the database_name parameter in your msfragger.params file needs to be present"
-   fi
-   if [ ! -f $DATABASENAME ]; then
-      die "ERROR: the database_name specified in msfragger.params file '$DATABASENAME' cannot be found"
-   fi
+  NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
+  if [[ $NP -eq 0 || $NP -gt "$MAX_PROCS" ]]; then
+    die "ERROR: the num_threads parameter in your msfragger.params file should be set to value between 1 and $MAX_PROCS"
+  fi
 
-   NPROCSFLAG=shm
-   if [ "$HOST" == "regis" ]; then
-     NPROCSFLAG=serial
-   fi
+  DATABASENAME=$(perl -ne 'print $1 if /^\s*database_name\s*=\s*(\S+)/' $P_OPT)
+  if [ -z $DATABASENAME ]; then
+    die "ERROR: the database_name parameter in your msfragger.params file needs to be present"
+  fi
+  if [ ! -f $DATABASENAME ]; then
+    die "ERROR: the database_name specified in msfragger.params file '$DATABASENAME' cannot be found"
+  fi
 
-
-   QSUBFLAGS="-pe ${NPROCSFLAG} ${NP} ${QSUBFLAGS}"
+  if [[ $NP -eq 0 ]]; then
+      QSUBFLAGS="-pe serial ${MAX_PROCS} ${QSUBFLAGS}"
+  else
+      QSUBFLAGS="-pe serial ${NP} ${QSUBFLAGS}"
+  fi
 }
+
 
 #
 # List of commands to run in the qsub script.  Commands are echo'ed out and
@@ -133,23 +144,27 @@ fi
 
 # -- Main ----------------------------------------------------------------------
 
+# Set up the appropriate common functions
 if [ "$HOST" == "regis" ]; then
   source qgrid_functions
 fi
-if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ]; then
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
   source slurm_functions
 fi
 
 # Check for necessary programs
 [ -x "${JAVA}" ] || die "ERROR: There is no java in your PATH"
 
+# Set up the search options
 search_options msfragger.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
-read_params
+check_params
 
-# For testing, just print out the commands that would be run for each mzML
-#setcmds
-#echo $cmds
-
-submit_jobs
+# For testing, just print out the commands that would be run
+if [ ! -z ${TESTMODE} ]; then
+  setcmds
+  echo $cmds
+else
+  submit_jobs
+fi
 
 exit 0

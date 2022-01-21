@@ -1,47 +1,60 @@
 #!/bin/bash
 #
-# Program: TPP HPC Tools
-# Author:  Joe Slagel
+# Program: qtandem
+# Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2012 by Joseph Slagel
+# Copyright (C) 2009-2022 by Eric Deutsch
 # 
-# This library is free software; you can redistribute it and/or             
-# modify it under the terms of the GNU Lesser General Public                
-# License as published by the Free Software Foundation; either              
-# version 2.1 of the License, or (at your option) any later version.        
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the Apache 2.0 License.
 #                                                                           
-# This library is distributed in the hope that it will be useful,           
-# but WITHOUT ANY WARRANTY; without even the implied warranty of            
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU         
-# General Public License for more details.                                  
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# full license for more details.                                  
 #                                                                           
-# You should have received a copy of the GNU Lesser General Public          
-# License along with this library; if not, write to the Free Software       
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+# You should have received a copy of the Apache 2.0 License
+# along with this library; if not, please see the original source at
+# https://github.com/edeutsch/qscripts
 # 
 # Institute for Systems Biology
-# 1441 North 34th St.
-# Seattle, WA  98103  USA
-# jslagel@systemsbiology.org
-#
-# $Id: $
+# 401 Terry Avenue North
+# Seattle WA 98109 USA
+# spctools@systemsbiology.org
 #
 
-set -e          # Tell bash to exit if any statement fails
+# Tell bash to exit if any statement fails
+set -e
+
+if [ -z "$HOST" ]; then
+  echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
+  exit
+fi
+
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
+  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+  exit
+fi
 
 # -- Local settings -----------------------------------------------------------
 
+   # Set TESTMODE to some value to do everything but actually submit the jobs
+   TESTMODE=${TESTMODE:-}
+
    # Default name for jobs in queue
    QNAME=${QNAME:-}
-    
+
    # Default project to submit jobs to
    QPROJECT=${QPROJECT:-}
-   
-   # Maximum procs to use
-   MAX_PROCS=${MAX_PROCS:-32}
+
+   # Limit to the number of cores (threads)
+   MAX_PROCS=${MAX_PROCS:-80}
+
+   # Default number of cores (threads) for one job
+   NP=${NP:-32}
 
    # Default qsub flags
-   QSUBFLAGS="${QSUBFLAGS}"
+   QSUBFLAGS="${QSUBFLAGS:-}"
    
    # Programs
    TANDEM=${TANDEM-`which tandem || true`}
@@ -112,11 +125,28 @@ fi
 
 # -- Main ----------------------------------------------------------------------
 
-source qgrid_functions                          # Load "q" grid functions
+# Set up the appropriate common functions
+if [ "$HOST" == "regis" ]; then
+  source qgrid_functions
+fi
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
+  source slurm_functions
+fi
 
 # Check for necessary programs
 [ -x "${TANDEM}" ]     || die "Error no tandem in your path"
 [ -x "${TANDEM2XML}" ] || die "Error no Tandem2XML in your path"
 
-search_options tandem.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
-submit_jobs
+# Set up for all input files
+search_options comet.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
+check_params
+
+# For testing, just print out the commands that would be run
+if [ ! -z ${TESTMODE} ]; then
+  setcmds
+  echo $cmds
+else
+  submit_jobs
+fi
+
+exit 0

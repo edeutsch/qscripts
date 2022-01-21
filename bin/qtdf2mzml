@@ -32,10 +32,12 @@ if [ -z "$HOST" ]; then
   exit
 fi
 
-#if [ "$HOST" != "regis" -a "$HOST" != "regis12" ]; then
-#   echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
-if [ "$HOST" != "regis12" ]; then
-  echo "ERROR: Please execute this from regis12 (new cluster head node)"
+#if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
+#  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+#  exit
+#fi
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
+  echo "ERROR: Please execute this from a new cluster submission host such as regis12"
   exit
 fi
 
@@ -44,26 +46,27 @@ fi
 
    # Default name for jobs in queue
    QNAME=${QNAME:-}
-    
+
    # Default project to submit jobs to
    QPROJECT=${QPROJECT:-}
 
-   # Default number of maximum processors (threads)
+   # Limit to the number of cores (threads)
    MAX_PROCS=${MAX_PROCS:-80}
 
-   # Set the number of processors
+   # Default number of cores (threads) for one job
    NP=${NP:-1}
 
-   # Default qsub flags use 80 threads on 1 host (if num_threads = 0)
-   QSUBFLAGS="${QSUBFLAGS}"
-   
-   # Set the GRES for this job type
+   # Default qsub flags
+   QSUBFLAGS="${QSUBFLAGS:-}"
+
+   # Set the 'ioslots' resource needed for this type of job
    GRES="${GRES:-ioslots:generic:50}"
-   
+
    # Programs
    EXECUTABLE=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml/tdf2mzml.py
    LIBRARY_PATH=/proteomics/sw/tdf2mzml/2021-04-06/tdf2mzml
-   
+
+
 # -----------------------------------------------------------------------------
 
 function usage() {
