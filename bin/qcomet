@@ -23,9 +23,6 @@
 # spctools@systemsbiology.org
 #
 
-# Tell bash to exit if any statement fails
-set -e
-
 if [ -z "$HOST" ]; then
   echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
   exit
