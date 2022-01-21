@@ -131,14 +131,14 @@ function parse_options() {
          ;;
       *)
          eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) usage "invalid file $1";; esac"
-         [ -d "$1" ] || usage "$1 directory not found"
+         [ -e "$1" ] || die "$1 file or directory not found"
          INPUTS+=" $1"
          shift
          ;;
       esac
    done
 
-   [ -z "$INPUTS" ]  && usage "Error missing one or more input files"
+   [ -z "$INPUTS" ]  && die "ERROR: Missing one or more input files. Use -h for help on usage."
 
    #### If no output directory is specified, use the current working directory `pwd`
    if [ -z "$O_OPT" ]; then
