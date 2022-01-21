@@ -215,6 +215,8 @@ mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${
 EOF
 )
 
+      fi
+
    fi
 
    #### If verbose, show the commands
