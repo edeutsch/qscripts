@@ -251,7 +251,14 @@ function submit()
    fi
       
    rm -f "$JFILE" "$SFILE" "$LFILE" "$EFILE"
-   
+
+   #### Set a GRES line if GRES is defined
+   if [ ! -z $GRES ]; then
+      GRES_LINE="#SBATCH --gres=${GRES}"
+   else
+      GRES_LINE=""
+   fi
+
    # Write out qsub script, BE VERY WARY of escaping environment variables
    cat <<QSUB_SCRIPT > "$SFILE"
 #!/bin/bash
@@ -263,6 +270,7 @@ function submit()
 #SBATCH --output $LFILE
 #SBATCH --error $EFILE
 #SBATCH --partition=${QQUEUE}
+${GRES_LINE}
 #$ -V -wd '${odir:-$PWD}'
 ### Grid Directives
 
