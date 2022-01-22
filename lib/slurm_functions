@@ -174,7 +174,7 @@ function submit_jobs () {
    
    files=
    roots=
-   counter=1
+   counter=0
 
    for file in $INPUTS; do
       file=$(rel2abs "$file")                   # use absolute path
@@ -188,7 +188,7 @@ function submit_jobs () {
          roots+="$root "
          if [ $counter == $B_OPT ]; then
             if [ ! -z "$V_OPT" ]; then
-               echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
+               echo "INFO: Submitting batch of $counter files with roots $roots" 
             fi
             setcmds
             if [ ! -z "$cmds" ]; then
@@ -215,7 +215,7 @@ function submit_jobs () {
 
    if [ ! -z "$files" ]; then
       if [ ! -z $V_OPT ]; then
-         echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
+         echo "INFO: Submitting batch of $counter files with roots $roots" 
       fi
       setcmds
       if [ ! -z "$cmds" ]; then
