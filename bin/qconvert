@@ -255,7 +255,7 @@ EOF
       else
         cmds=$(cat <<EOF
    
-mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${root}-meta.txt
+mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${root}.metadata.txt
 
 EOF
 )
