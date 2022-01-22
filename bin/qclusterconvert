@@ -66,15 +66,16 @@ assert_new_cluster_head_node
 function usage() {
    [ "$1" ] && echo "$(basename $0): $*" 1>&2
    echo "Usage:"
-   echo "$(basename $0) [options] $EXTS [-- [sbatch options]]"
+   echo "$(basename $0) [options] *.raw|*.RAW|*.d|*.wiff|*.baf [-- [sbatch options]]"
    echo
    echo "Options:"
    echo "   -h, --help          Show this usage information"
    echo "   -m, --manual        Show more detailed documentation"
    echo "   -v, --verbose       Print out information as jobs are prepared"
-   echo "   -p,--purge          Purge expected output files if they exist (default is to skip)"
+   echo "   -p,--purge          Purge expected output files if they exist (default is to skip conversion if the output is already there)"
    echo "   -o,--out-dir <dir>  Destination directory for output files (defaults to current working directory)"
-   echo "   -q,--queue <queue>  Name of the queue to which the jobs will be submitted (urgent, active, slow)"
+   echo "   -f,--force_msconvert Force the job to go to ProteoWizard msconvert. This is only relevant for Thermo .raw files. By default they run on the Linux cluster using ThermoRawFileParser. Use this option to use msconvert instead."
+   echo "   (other unrecognized options are passed along to remoteconvert_msconvert.pl)"
    echo
    echo "   [sbatch options]      all flags following '--' are passed to sbatch"
    echo
@@ -103,9 +104,9 @@ function parse_options() {
             -c 'Trans-Proteomic Pipeline (TPP)' $POD | nroff -man | less
          exit
          ;;
-      -q|--queue)
-         Q_OPT="$2"
-         shift 2
+      -f|--force)
+         F_OPT="true"
+         shift
          ;;
       -o|--out-dir)
          O_OPT="$2"
@@ -119,7 +120,7 @@ function parse_options() {
          V_OPT="true"
          shift
          ;;
-      *.d|*.wiff|*.RAW|*.baf|*.raw)
+      *.d|*.wiff|*.baf|*.raw|*.RAW)
          [ -e "$1" ] || die "$1 file or directory not found"
          INPUTS+=" $1"
          shift
@@ -234,7 +235,7 @@ EOF
 
 
    #### Define the commands to execute for Thermo RAW
-   if [ "${file:(-4)}" == ".rawxx" ] || [ "${file:(-4)}" == ".RAWxx" ]; then
+   if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
 
       #### Thermo Raw File Parser cannot work on sym links
       if [ -L $file ]; then
@@ -254,7 +255,7 @@ EOF
 
 
    #### Define the commands to execute for Thermo RAW
-   if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
+   if [ "${file:(-5)}" == ".wiff" ] || [ "${file:(-4)}" == ".baf" ]; then
       USE_REMOTECONVERT=true
       cmds=$(cat <<EOF
    
@@ -270,6 +271,26 @@ EOF
 )
 
    fi
+
+
+   #### If the user selected --force, then override with msconvert regardless of above
+   if [ ! -z "${F_OPT}" ]; then
+      USE_REMOTECONVERT=true
+      cmds=$(cat <<EOF
+   
+$REMOTECONVERT $REMOTECONVERTFLAGS --server msconvert2 "$file"
+
+# Did it produce a file?
+if [ ! -f "${file%.*}".mz*ML ]; then
+   echo "Error: missing mzML/mzXML file for $file"
+   exit 1
+fi
+
+EOF
+)
+
+   fi
+
 
 
    #### If verbose, show the commands
