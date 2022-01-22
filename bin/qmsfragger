@@ -91,7 +91,8 @@ function usage() {
 function options() {
    P_OPT=$1; shift
    EXTS=$1; shift
-   
+   B_OPT=5
+
    INPUTS=
    while [ "$1" ]; do
       case "$1" in 
@@ -146,8 +147,8 @@ function options() {
    done
 
    [ -z "$INPUTS" ] && die "ERROR: missing one or more input files. Use -h for help on usage."
-   [ -z "$P_OPT" ] && search_usage "Missing required .params file. Use -h for help on usage."
-   [ -f "$P_OPT" ] || search_usage "Error '$P_OPT' parameters file not found. Use -h for help on usage."
+   [ -z "$P_OPT" ] && die "Missing required .params file. Use -h for help on usage."
+   [ -f "$P_OPT" ] || die "Error '$P_OPT' parameters file not found. Use -h for help on usage."
 
 if [ ! -z "$O_OPT" ]; then
       mkdir -p "$O_OPT"
