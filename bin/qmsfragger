@@ -246,7 +246,7 @@ EOF
    fi
 
 
-  if [ -z $roots ]; then
+  if [ -z "$roots" ]; then
      roots=$root
   fi
 

@@ -187,7 +187,7 @@ function submit_jobs () {
          files+="$file "
          roots+=$root
          if [ $counter == $B_OPT ]; then
-            if [ ! -z $V_OPT ]; then
+            if [ ! -z "$V_OPT" ]; then
                echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
             fi
             setcmds
@@ -213,7 +213,7 @@ function submit_jobs () {
 
    done
 
-   if [ ! -z $files ]; then
+   if [ ! -z "$files" ]; then
       if [ ! -z $V_OPT ]; then
          echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
       fi
