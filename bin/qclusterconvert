@@ -27,6 +27,18 @@
 #### Import a common set of functions
 source qscript_functions
 
+
+#### Temporary notice of deprecation of the old qconvert. This only runs on regis12
+if [ -z "$HOST" ]; then
+  die "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
+fi
+
+if [ "$HOST" == "regis" ]; then
+  die "NOTICE: The previous qconvert has been retired. Please log on to regis12 and run qconvert on the new cluster from there. Please report problems to Eric Deutsch."
+fi
+}
+
+
 #### Verify the hosts that this can be run on
 assert_new_cluster_head_node
 
