@@ -196,7 +196,7 @@ function submit_jobs () {
             fi
             files=
             roots=
-            counter=1
+            counter=0
          fi
 
       else
@@ -223,7 +223,7 @@ function submit_jobs () {
       fi
       files=
       roots=
-      counter=1
+      counter=0
    fi
 
 }
