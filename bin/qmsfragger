@@ -252,12 +252,10 @@ EOF
 
   for root in $roots; do
      cmds+=$(cat <<EOF
+\n
 mv $root.pepXML $root.pep.xml
-
-EOF
-)
-     cmds+=$(cat <<EOF
 replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
+\n
 
 EOF
 )
