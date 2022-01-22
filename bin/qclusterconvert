@@ -57,6 +57,9 @@ assert_new_cluster_head_node
 
    TRFC_EXECUTABLE=/proteomics/sw/ThermoRawFileParser/current/ThermoRawFileParser.exe
 
+   REMOTECONVERT=${REMOTECONVERT-$(which remoteconvert_msconvert.pl || true)}
+   REMOTECONVERTFLAGS="${REMOTECONVERTFLAGS-} --log2screen "
+
 # -----------------------------------------------------------------------------
 
 function usage() {
@@ -115,16 +118,20 @@ function parse_options() {
          V_OPT="true"
          shift
          ;;
-      -*)
-         usage "invalid option $1"
-         ;;
-      *)
-         eval "case "$1" in $PERMITTED_EXTENSIONS) ;; *) usage "invalid file $1";; esac"
+      *.d|*.wiff|*.RAW|*.baf|*.raw)
          [ -e "$1" ] || die "$1 file or directory not found"
          INPUTS+=" $1"
          shift
          ;;
-      esac
+      -*)
+         REMOTECONVERTFLAGS+="$1 "
+         shift
+         ;;
+      *)
+         REMOTECONVERTFLAGS+="\"$1\" "
+         shift
+         ;;
+         esac
    done
 
    [ -z "$INPUTS" ]  && die "ERROR: Missing one or more input files. Use -h for help on usage."
@@ -201,7 +208,7 @@ EOF
    fi
 
    #### Define the commands to execute for Thermo RAW
-   if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
+   if [ "${file:(-4)}" == ".rawxx" ] || [ "${file:(-4)}" == ".RAWxx" ]; then
 
       #### Thermo Raw File Parser cannot work on sym links
       if [ -L $file ]; then
@@ -219,6 +226,26 @@ EOF
 
    fi
 
+
+   #### Define the commands to execute for Thermo RAW
+   if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
+
+      cmds=$(cat <<EOF
+   
+$REMOTECONVERT $REMOTECONVERTFLAGS --server msconvert2 "$file"
+
+# Did it produce a file?
+if [ ! -f "${file%.*}".mz*ML ]; then
+   echo "Error: missing mzML/mzXML file for $file"
+   exit 1
+fi
+
+EOF
+)
+
+   fi
+
+
    #### If verbose, show the commands
    if [ ! -z $V_OPT ]; then
      echo "INFO: Will execute the following on a cluster node:$cmds"
@@ -235,7 +262,7 @@ if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "r
 fi
 
 # Set up for all input files
-parse_options '*.d|*.raw|*.RAW' $*
+parse_options '*.d|*.wiff|*.baf|*.raw|*.RAW' $*
 
 # For testing, just print out the commands that would be run
 if [ ! -z ${TESTMODE} ]; then
