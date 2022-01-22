@@ -183,7 +183,7 @@ function submit_jobs () {
       root="${input%.*}"                        # filename w/o extension
 
       if [ ! -z $B_OPT ]; then
-         counter+=1
+         counter=$((counter + 1))
          files+="$file "
          roots+="$root "
          if [ $counter == $B_OPT ]; then
