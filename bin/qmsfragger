@@ -152,12 +152,6 @@ fi
 search_options msfragger.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
 check_params
 
-# For testing, just print out the commands that would be run
-if [ ! -z ${TESTMODE} ]; then
-  setcmds
-  echo $cmds
-else
-  submit_jobs
-fi
+submit_jobs
 
 exit 0

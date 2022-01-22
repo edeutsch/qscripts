@@ -288,13 +288,7 @@ fi
 # Set up for all input files
 parse_options '*.d|*.wiff|*.baf|*.raw|*.RAW' $*
 
-# For testing, just print out the commands that would be run
-if [ ! -z ${TESTMODE} ]; then
-  setcmds
-  echo $cmds
-else
-  submit_jobs
-fi
+submit_jobs
 
 exit 0
 
