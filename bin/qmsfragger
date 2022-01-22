@@ -238,7 +238,6 @@ EOF
 cd '${odir:-$PWD}'
 export LC_ALL=C
 python3 /proteomics/sw/bin/msfragger_pep_split.py $S_OPT "/bin/java -Xmx${REQUESTGB}G -jar" $MSFRAGGER $params $files
-updatepaths.pl -d $DATABASENAME $root.pepXML
 
 EOF
 )
@@ -254,6 +253,7 @@ EOF
      cmds+=$(cat <<EOF
 
 mv $root.pepXML $root.pep.xml
+updatepaths.pl -d $DATABASENAME $root.pep.xml
 replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
 
 
