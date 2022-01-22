@@ -227,7 +227,7 @@ function setcmds() {
      cmds=$(cat <<EOF
 cd '${odir:-$PWD}'
 export LC_ALL=C
-/bin/java -Xmx${REQUESTGB}G -jar $MSFRAGGER $params $file
+/bin/java -Xmx${REQUESTGB}G -jar $MSFRAGGER $params $files
 
 EOF
 )
@@ -237,7 +237,7 @@ EOF
      cmds=$(cat <<EOF
 cd '${odir:-$PWD}'
 export LC_ALL=C
-python3 /proteomics/sw/bin/msfragger_pep_split.py $S_OPT "/bin/java -Xmx${REQUESTGB}G -jar" $MSFRAGGER $params $file
+python3 /proteomics/sw/bin/msfragger_pep_split.py $S_OPT "/bin/java -Xmx${REQUESTGB}G -jar" $MSFRAGGER $params $files
 updatepaths.pl -d $DATABASENAME $root.pepXML
 
 EOF
@@ -251,8 +251,17 @@ EOF
   fi
 
   for root in $roots; do
-     cmds+="mv $root.pepXML $root.pep.xml"
-     cmds+="replacehere 'X! Tandem' 'MSFragger' $root.pep.xml"
+     cmds+=$(cat <<EOF
+mv $root.pepXML $root.pep.xml
+
+EOF
+)
+     cmds+=$(cat <<EOF
+replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
+
+EOF
+)
+
   done
 
 }
