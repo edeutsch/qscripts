@@ -88,7 +88,7 @@ function usage() {
 #   Sets V_OPT if provided on command line
 #   Appends any qsub flags to QSUBFLAGS 
 #
-function search_options() {
+function options() {
    P_OPT=$1; shift
    EXTS=$1; shift
    
@@ -101,7 +101,7 @@ function search_options() {
          break
          ;;
       -h|--help)
-         search_usage
+         usage
          ;;
       -m|--man)
          POD=`dirname $0`/qgrid_functions
@@ -271,7 +271,7 @@ fi
 [ -x "${JAVA}" ] || die "ERROR: There is no java in your PATH"
 
 # Set up the search options
-search_options msfragger.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
+options msfragger.params '*.mzML|*.mzXML|*.mgf|*.mzML.gz|*.mzXML.gz' $*
 check_params
 
 submit_jobs
