@@ -218,7 +218,7 @@ function setcmds() {
      REQUESTGB=60
    fi
 
-   if [ ! -z $files ]; then
+   if [ ! -z "$files" ]; then
       file=$files
    fi
 
