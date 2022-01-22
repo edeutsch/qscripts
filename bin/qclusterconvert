@@ -194,9 +194,14 @@ function setcmds() {
      return
    fi
 
+
+
    #### Define the commands to execute for timsTOF TDF
    if [ "${file:(-2)}" == ".d" ]; then
-     cmds=$(cat <<EOF
+
+      if [ -f "${file}/analysis.tdf" ]; then
+
+        cmds=$(cat <<EOF
    
 export LD_LIBRARY_PATH=$TDF_LIBRARY_PATH
 export LC_ALL=C
@@ -205,7 +210,26 @@ $TDF_EXECUTABLE --ms1_type centroid --compression zlib -i $file -o $odir$root.mz
 EOF
 )
 
+      else
+
+         cmds=$(cat <<EOF
+   
+$REMOTECONVERT $REMOTECONVERTFLAGS --server msconvert2 "$file"
+
+# Did it produce a file?
+if [ ! -f "${file%.*}".mz*ML ]; then
+   echo "Error: missing mzML/mzXML file for $file"
+   exit 1
+fi
+
+EOF
+)
+
+      fi
+
    fi
+
+
 
    #### Define the commands to execute for Thermo RAW
    if [ "${file:(-4)}" == ".rawxx" ] || [ "${file:(-4)}" == ".RAWxx" ]; then
@@ -229,7 +253,7 @@ EOF
 
    #### Define the commands to execute for Thermo RAW
    if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
-
+      echo "here"
       cmds=$(cat <<EOF
    
 $REMOTECONVERT $REMOTECONVERTFLAGS --server msconvert2 "$file"
