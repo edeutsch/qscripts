@@ -59,6 +59,7 @@ assert_new_cluster_head_node
 
    REMOTECONVERT=${REMOTECONVERT-$(which remoteconvert_msconvert.pl || true)}
    REMOTECONVERTFLAGS="${REMOTECONVERTFLAGS-} --log2screen "
+   REMOTECONVERT_NODE=regis30
 
 # -----------------------------------------------------------------------------
 
@@ -165,7 +166,8 @@ function parse_options() {
 function setcmds() {
 
    prog=convert
-   
+   USE_REMOTECONVERT=
+
    # Remove possible previous log files
    if [ ! -z $V_OPT ]; then
       echo "INFO: Remove previous queueing files if they exist"
@@ -253,7 +255,7 @@ EOF
 
    #### Define the commands to execute for Thermo RAW
    if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
-      echo "here"
+      USE_REMOTECONVERT=true
       cmds=$(cat <<EOF
    
 $REMOTECONVERT $REMOTECONVERTFLAGS --server msconvert2 "$file"

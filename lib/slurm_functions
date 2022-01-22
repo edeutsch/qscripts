@@ -220,6 +220,13 @@ function submit()
       GRES_LINE=""
    fi
 
+   #### Set a fixed host line for remoteconvert
+   if [ ! -z $USE_REMOTECONVERT ]; then
+      NODELIST_LINE="#SBATCH --nodelist=${REMOTECONVERT_NODE}"
+   else
+      NODELIST_LINE=""
+   fi
+
    # Write out qsub script, BE VERY WARY of escaping environment variables
    cat <<QSUB_SCRIPT > "$SFILE"
 #!/bin/bash
@@ -232,6 +239,7 @@ function submit()
 #SBATCH --error $EFILE
 #SBATCH --partition=${QQUEUE}
 ${GRES_LINE}
+${NODELIST_LINE}
 #$ -V -wd '${odir:-$PWD}'
 ### Grid Directives
 
