@@ -57,6 +57,116 @@ assert_old_or_new_cluster_head_node
 
 # -----------------------------------------------------------------------------
 
+# 
+# Usage statement
+#
+function usage() {
+   [ "$1" ] && echo "$(basename $0): $*" 1>&2
+   echo "Usage:"
+   echo "$(basename $0) [options] $EXTS [-- [sbatch options]]"
+   echo
+   echo "Options:"
+   echo "   -h, --help          help"
+   echo "   -m, --manual        manual"
+   echo "   -p,--params <file>  parameter file to use (defaults to ${PROG:-<search>}.params)"
+   echo "   -q,--queue <queue>  name of the queue to which the jobs will be submitted (urgent, active, slow, xlarge)"
+   echo "   -o,--out-dir <dir>  destination directory for output files"
+   echo "   -s,--split <n>      number of pieces to split search into (for large search spaces) (default 1)"
+   echo "   -b,--batch <n>      number of msrun to batch together in a single job (default 5)"
+   echo
+   echo "   [sbatch options]      all flags following '--' are passed to sbatch"
+   echo
+   exit 1
+}
+
+#
+# All of the MS-MS search commands (qtandem, qinspect, ...) should have a
+# the same search options
+#
+#   Sets INPUTS to list of input files to search
+#   Sets P_OPT to be the search parameter file
+#   Sets V_OPT if provided on command line
+#   Appends any qsub flags to QSUBFLAGS 
+#
+function search_options() {
+   P_OPT=$1; shift
+   EXTS=$1; shift
+   
+   INPUTS=
+   while [ "$1" ]; do
+      case "$1" in 
+      --)
+         shift
+         QSUBFLAGS+=" $*"
+         break
+         ;;
+      -h|--help)
+         search_usage
+         ;;
+      -m|--man)
+         POD=`dirname $0`/qgrid_functions
+         pod2man -n 'HPC TOOLS' -r 'HPC TOOLS' \
+            -c 'Trans-Proteomic Pipeline (TPP)' $POD | nroff -man | less
+         exit
+         ;;
+      -p|--params)
+         P_OPT="$2"
+         shift 2
+         ;;
+      -s|--split)
+         S_OPT="$2"
+         shift 2
+         ;;
+      -b|--batch)
+         B_OPT="$2"
+         shift 2
+         ;;
+      -q|--queue)
+         Q_OPT="$2"
+         shift 2
+         ;;
+      -o|--out-dir)
+         O_OPT="$2"
+         shift 2
+         ;;
+      -v|--verbose)
+         V_OPT="true"
+         shift
+         ;;
+      -*)
+         search_usage "invalid option $1"
+         ;;
+      *)
+         eval "case "$1" in $EXTS) ;; *) search_usage "invalid file $1";; esac"
+         [ -f "$1" ] || die "$1 file not found"
+         INPUTS+=" $1"
+         shift
+         ;;
+      esac
+   done
+
+   [ -z "$INPUTS" ] && die "ERROR: missing one or more input files. Use -h for help on usage."
+   [ -z "$P_OPT" ] && search_usage "Missing required .params file. Use -h for help on usage."
+   [ -f "$P_OPT" ] || search_usage "Error '$P_OPT' parameters file not found. Use -h for help on usage."
+
+if [ ! -z "$O_OPT" ]; then
+      mkdir -p "$O_OPT"
+      O_OPT=$(rel2abs "$O_OPT")
+   fi
+
+   #### Set the QQUEUE value
+   if [ ! -z "$Q_OPT" ]; then
+      QQUEUE=$Q_OPT
+   else
+      QQUEUE=active
+   fi
+
+   
+   true                 # return "status"
+}
+
+
+
 #
 # Read in msfragger parameters file. 
 #
@@ -107,13 +217,16 @@ function setcmds() {
      REQUESTGB=60
    fi
 
+   if [ ! -z $files ]; then
+      file=$files
+   fi
+
    # If there is no splitting or split is 1, then just run msfragger directly
    if [[ -z $S_OPT || $S_OPT -eq 0 || $S_OPT -eq 1 ]]; then
      cmds=$(cat <<EOF
 cd '${odir:-$PWD}'
 export LC_ALL=C
 /bin/java -Xmx${REQUESTGB}G -jar $MSFRAGGER $params $file
-mv $root.pepXML $root.pep.xml
 
 EOF
 )
@@ -122,15 +235,24 @@ EOF
 
      cmds=$(cat <<EOF
 cd '${odir:-$PWD}'
+export LC_ALL=C
 python3 /proteomics/sw/bin/msfragger_pep_split.py $S_OPT "/bin/java -Xmx${REQUESTGB}G -jar" $MSFRAGGER $params $file
-mv $root.pepXML $root.pep.xml
-updatepaths.pl -d $DATABASENAME $root.pep.xml
-replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
+updatepaths.pl -d $DATABASENAME $root.pepXML
 
 EOF
 )
 
-fi
+   fi
+
+
+  if [ -z $roots ]; then
+     roots=$root
+  fi
+
+  for root in $roots; do
+     cmds+="mv $root.pepXML $root.pep.xml"
+     cmds+="replacehere 'X! Tandem' 'MSFragger' $root.pep.xml"
+  done
 
 }
 

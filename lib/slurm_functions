@@ -172,25 +172,60 @@ function submit_jobs () {
    prog=${prog:-$(basename $0)}
    odir=${O_OPT:+${O_OPT}/}                     # append '/' to it
    
+   files=
+   roots=
+   counter=1
+
    for file in $INPUTS; do
       file=$(rel2abs "$file")                   # use absolute path
       idir="$(dirname "$file")/"                # base directory of input
       input=$(basename "${file%.gz}")           # filename w/o gz extension
       root="${input%.*}"                        # filename w/o extension
 
-      if [ ! -z $V_OPT ]; then
-         echo "INFO: Submitting file=$file with root=$root" 
-      fi
+      if [ ! -z $B_OPT ]; then
+         counter+=1
+         files+="$file "
+         roots+=$root
+         if [ $counter == $B_OPT ]; then
+            if [ ! -z $V_OPT ]; then
+               echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
+            fi
+            setcmds
+            if [ ! -z "$cmds" ]; then
+               submit
+            fi
+            files=
+            roots=
+            counter=1
+         fi
 
-      #### Create the commands to run
-      setcmds
-
-      #### If there's no command to run after setcmds, then skip it
-      if [ ! -z "$cmds" ]; then
-         submit
+      else
+         if [ ! -z $V_OPT ]; then
+            echo "INFO: Submitting file=$file with root=$root" 
+         fi
+         #### Create the commands to run
+         setcmds
+         #### If there's no command to run after setcmds, then skip it
+         if [ ! -z "$cmds" ]; then
+            submit
+         fi
       fi
 
    done
+
+   if [ ! -z $files ]; then
+      if [ ! -z $V_OPT ]; then
+         echo "INFO: Submitting batch of $B_OPT files with roots $roots" 
+      fi
+      setcmds
+      if [ ! -z "$cmds" ]; then
+         submit
+      fi
+      files=
+      roots=
+      counter=1
+   fi
+
 }
 
 #
