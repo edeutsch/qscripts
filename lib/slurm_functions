@@ -258,7 +258,7 @@ function submit()
    #### Set a fixed host line for remoteconvert
    if [ ! -z $USE_REMOTECONVERT ]; then
       NODELIST_LINE="#SBATCH --nodelist=${REMOTECONVERT_NODE}"
-      GRES_LINE="#SBATCH --gres=-msconvert2slots:generic:12"
+      GRES_LINE="#SBATCH --gres=msconvert2slots:generic:12"
    else
       NODELIST_LINE=""
    fi
