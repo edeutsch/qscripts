@@ -70,7 +70,7 @@ assert_new_cluster_head_node
 
    REMOTECONVERT=${REMOTECONVERT-$(which remoteconvert_msconvert.pl || true)}
    REMOTECONVERTFLAGS="${REMOTECONVERTFLAGS-} --log2screen "
-   REMOTECONVERT_NODE=regis20,regis21,regis22,regis23,regis24,regis25,regis26,regis27
+   REMOTECONVERT_NODE=regis30
 
 # -----------------------------------------------------------------------------
 
