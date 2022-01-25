@@ -6,8 +6,19 @@
 # Copyright (C) 2009-2022 by Eric Deutsch
 # 
 
+#### Temporary notice of deprecation of the old qconvert. This only runs on regis12
+if [ -z "$HOST" ]; then
+  echo "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
+  exit
+fi
 
-text=$(cat <<EOF
+if [ "$HOST" != "regis12" ]; then
+  echo "NOTICE: Please log on to regis12 and run qhelp and other cluster commands from there. Please report problems to Eric Deutsch."
+  exit
+fi
+
+
+cat <<EOF
    
 Regis cluster usage summary
 
@@ -53,7 +64,5 @@ qshowmine
 
 
 EOF
-)
 
 
-echo $text
