@@ -1,0 +1,59 @@
+#!/bin/bash
+#
+# Program: qhelp
+# Author:  Eric Deutsch
+#
+# Copyright (C) 2009-2022 by Eric Deutsch
+# 
+
+
+text=$(cat <<EOF
+   
+Regis cluster usage summary
+
+#### Cluster information
+qhelp        # This summary
+qnodes       # List the current set of cluster nodes and how busy they are
+qshow        # Show all current jobs running and queued
+qshowmine    # Show my jobs, running and queued
+
+#### Data conversion
+qconvert *.raw     # Convert all .raw files to mzML files
+qconvert *.d       # Convert all timsTOF .d folders to mzML files
+
+#### Submitting searches
+qcomet *.mzML         # Search all mzMLs in current directory with Comet
+qmsfragger *.mzML     # Search all mzMLs in current directory with MSFragger
+qmsfragger -s 10 -b 2 *.mzML   # Search all mzMLs with MSFragger with database split into 10 pieces
+                                 and only two mzMLs batched together
+qtandem *.mzML        # Search all mzMLs in current directory with X!Tandem
+
+#### Running TPP processing on a cluster node (not on the current interactive machine)
+
+## Immediately run xinteract on all 20*.pep.xml files
+srun -p urgent xinteract -OZ -PPM -Ninteract-prob.pep.xml 20*.pep.xml
+
+## Immediately run iProphet with 32 threads
+srun -c 32 -p urgent InterProphetParser THREADS=32 interact-prob.pep.xml interact-ipro.pep.xml
+
+## Immediately run ProteinProphet
+srun -p urgent ProteinProphet interact-ipro.pep.xml interact-prob.prot.xml IPROPHET NONSP
+
+#### Submitting a batch job to do something
+cat > myjob.sh           # (or you can use your favorite editor: pico myjob.sh)
+#!/bin/bash
+xinteract -OZ -PPM -Ninteract-prob.pep.xml 20*.pep.xml
+InterProphetParser THREADS=32 interact-prob.pep.xml interact-ipro.pep.xml
+ProteinProphet interact-ipro.pep.xml interact-prob.prot.xml IPROPHET NONSP
+^D        # (type CTRL + D to finish the file)
+chmod a+x myjob.sh           # Make the file executable
+sbatch -c 32 -p active myjob.sh
+qshowmine
+
+
+
+EOF
+)
+
+
+echo $text
