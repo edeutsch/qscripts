@@ -253,7 +253,9 @@ EOF
   for root in $roots; do
      cmds+=$(cat <<EOF
 
-mv $root.pepXML $root.pep.xml
+#mv $root.pepXML $root.pep.xml
+InteractParser $root.pep.xml $root.pepXML -n
+
 updatepaths.pl -d $DATABASENAME $root.pep.xml
 replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
 
