@@ -149,6 +149,7 @@ function options() {
    [ -z "$INPUTS" ] && die "ERROR: missing one or more input files. Use -h for help on usage."
    [ -z "$P_OPT" ] && die "Missing required .params file. Use -h for help on usage."
    [ -f "$P_OPT" ] || die "Error '$P_OPT' parameters file not found. Use -h for help on usage."
+   [ "$B_OPT" != "1" ] && warn "NOTE: MS Runs will be batched in groups of $B_OPT for efficiency. There will be ${B_OPT}x fewer jobs than files. This is a good thing. You can control this with -b. See qmsfragger -h for more information."
 
 if [ ! -z "$O_OPT" ]; then
       mkdir -p "$O_OPT"
