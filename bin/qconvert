@@ -34,7 +34,7 @@ if [ -z "$HOST" ]; then
 fi
 
 if [ "$HOST" == "regis" ]; then
-  die "NOTICE: The previous qconvert has been retired. Please log on to regis12 and run qconvert on the new cluster from there. Please report problems to Eric Deutsch."
+  die "NOTICE: The previous qconvert has been retired. Please log on to regis-new and run qconvert on the new cluster from there. Please report problems to Eric Deutsch."
 fi
 
 
@@ -316,7 +316,7 @@ EOF
 # -- Main ----------------------------------------------------------------------
 
 # Set up the appropriate common functions
-if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-new" ] || [ "$HOST" == "regis-dev" ] || [ "$HOST" == "regis-web" ]; then
   source slurm_functions
 fi
 

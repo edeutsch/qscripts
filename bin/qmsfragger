@@ -215,7 +215,7 @@ function setcmds() {
    rm -f $odir$root.pep.xml  $odir$root.$prog.qlog
 
    REQUESTGB=80
-   if [ "$HOST" == "regis12" ]; then
+   if [ "$HOST" == "regis12" || [ "$HOST" == "regis-new" ] ]; then
      REQUESTGB=60
    fi
 
@@ -276,7 +276,7 @@ EOF
 if [ "$HOST" == "regis" ]; then
   source qgrid_functions
 fi
-if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-dev-new" ] || [ "$HOST" == "regis-web-new" ]; then
+if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-new" ] || [ "$HOST" == "regis-dev" ] || [ "$HOST" == "regis-web" ]; then
   source slurm_functions
 fi
 
