@@ -37,7 +37,7 @@ fi
 #  exit
 #fi
 if [ "$HOST" != "regis" ] && [ "$HOST" != "regis-new" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
-  echo "ERROR: Please execute this from a new cluster submission host such as regis12"
+  echo "ERROR: Please execute this from a new cluster submission host such as regis-new"
   exit
 fi
 

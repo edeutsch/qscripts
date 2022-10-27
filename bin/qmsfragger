@@ -215,7 +215,7 @@ function setcmds() {
    rm -f $odir$root.pep.xml  $odir$root.$prog.qlog
 
    REQUESTGB=80
-   if [ "$HOST" == "regis12" || [ "$HOST" == "regis-new" ] ]; then
+   if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-new" ]; then
      REQUESTGB=60
    fi
 
