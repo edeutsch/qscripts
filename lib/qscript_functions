@@ -63,8 +63,8 @@ if [ -z "$HOST" ]; then
   die "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
 fi
 
-if [ "$HOST" != "regis-new" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
-  die "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
+  die "ERROR: Please execute this from regis (or regis-dev, regis-web for special applications)"
 fi
 }
 
@@ -75,8 +75,8 @@ if [ -z "$HOST" ]; then
   die "ERROR: Environment variable HOST is not defined. It should have been set automatically in /proteomics/sw/.bashrc"
 fi
 
-if [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-new" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
-  die "ERROR: Please execute this from a new cluster submission host such as regis12"
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
+  die "ERROR: Please execute this from a cluster submission host like regis"
 fi
 }
 
