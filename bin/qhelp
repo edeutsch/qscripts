@@ -12,8 +12,8 @@ if [ -z "$HOST" ]; then
   exit
 fi
 
-if [ "$HOST" != "regis-new" ]; then
-  echo "NOTICE: Please log on to regis-new and run qhelp and other cluster commands from there. Please report problems to Eric Deutsch."
+if [ "$HOST" != "regis" ]; then
+  echo "NOTICE: Please log on to regis and run qhelp and other cluster commands from there. Please report problems to Eric Deutsch."
   exit
 fi
 

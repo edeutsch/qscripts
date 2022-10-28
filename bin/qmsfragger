@@ -214,10 +214,7 @@ function setcmds() {
    # Remove previous results
    rm -f $odir$root.pep.xml  $odir$root.$prog.qlog
 
-   REQUESTGB=80
-   if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-new" ]; then
-     REQUESTGB=60
-   fi
+   REQUESTGB=90
 
    if [ ! -z "$files" ]; then
       file=$files
@@ -273,10 +270,10 @@ EOF
 # -- Main ----------------------------------------------------------------------
 
 # Set up the appropriate common functions
-if [ "$HOST" == "regis" ]; then
+if [ "$HOST" == "regis-old" ]; then
   source qgrid_functions
 fi
-if [ "$HOST" == "regis12" ] || [ "$HOST" == "regis-new" ] || [ "$HOST" == "regis-dev" ] || [ "$HOST" == "regis-web" ]; then
+if [ "$HOST" == "regis" ] || [ "$HOST" == "regis-dev" ] || [ "$HOST" == "regis-web" ]; then
   source slurm_functions
 fi
 

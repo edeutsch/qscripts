@@ -32,12 +32,8 @@ if [ -z "$HOST" ]; then
   exit
 fi
 
-#if [ "$HOST" != "regis" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev-new" ] && [ "$HOST" != "regis-web-new" ]; then
-#  echo "ERROR: Please execute this from either regis (old cluster) or regis12 (new cluster)"
-#  exit
-#fi
-if [ "$HOST" != "regis" ] && [ "$HOST" != "regis-new" ] && [ "$HOST" != "regis12" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
-  echo "ERROR: Please execute this from a new cluster submission host such as regis-new"
+if [ "$HOST" != "regis" ] && [ "$HOST" != "regis-dev" ] && [ "$HOST" != "regis-web" ]; then
+  echo "ERROR: Please execute this from a cluster submission host such as regis"
   exit
 fi
 
@@ -216,7 +212,7 @@ EOF
 
 
 # -- Main ----------------------------------------------------------------------
-if [ "$HOST" == "regis12" || [ "$HOST" == "regis-new" ] ]; then
+if [ "$HOST" == "regis" ] ]; then
   source /proteomics/sw/qscripts/lib/slurm_functions
 fi
 
