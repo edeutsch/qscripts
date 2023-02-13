@@ -249,19 +249,20 @@ EOF
    #### Define the commands to execute for Thermo RAW
    if [ "${file:(-4)}" == ".raw" ] || [ "${file:(-4)}" == ".RAW" ]; then
 
+      #### Version 1.4.2 can now work with sym links
       #### Thermo Raw File Parser cannot work on sym links
-      if [ -L $file ]; then
-         echo "INFO: Input file $file is a symbolic link. ThermoRawFileParser cannot process sym links. Skip $file"
-         cmds=
-      else
-        cmds=$(cat <<EOF
-   
+      #if [ -L $file ]; then
+      #   echo "INFO: Input file $file is a symbolic link. ThermoRawFileParser cannot process sym links. Skip $file"
+      #   cmds=
+      #else
+      #  cmds=$(cat <<EOF
+      cmds=$(cat <<EOF
 mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${root}.metadata.txt
 
 EOF
 )
 
-      fi
+      #fi
 
    fi
 
