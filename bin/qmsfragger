@@ -52,7 +52,7 @@ assert_old_or_new_cluster_head_node
   
   # Programs
   JAVA=${JAVA-`which java 2>/dev/null || echo ''`}
-  MSFRAGGER=${MSFRAGGER-/proteomics/sw/MSFragger/MSFragger-3.2-rc17/msfragger-3.2-rc17.one-jar.jar}
+  MSFRAGGER=${MSFRAGGER-/proteomics/sw/MSFragger/MSFragger/msfragger.jar}
 
 
 # -----------------------------------------------------------------------------
@@ -73,6 +73,7 @@ function usage() {
    echo "   -o,--out-dir <dir>  destination directory for output files"
    echo "   -s,--split <n>      number of pieces to split search into (for large search spaces) (default 1)"
    echo "   -b,--batch <n>      number of msrun to batch together in a single job (default 5)"
+   echo "   -c,--config <type>  create a config file where <type> is either closed or open"
    echo
    echo "   [sbatch options]      all flags following '--' are passed to sbatch"
    echo
@@ -122,6 +123,10 @@ function options() {
          B_OPT="$2"
          shift 2
          ;;
+      -c|--config)
+         C_OPT="$2"
+         shift 2
+         ;;
       -q|--queue)
          Q_OPT="$2"
          shift 2
@@ -145,6 +150,11 @@ function options() {
          ;;
       esac
    done
+
+   if [ ! -z "$C_OPT" ]; then
+      $JAVA -jar $MSFRAGGER --config $C_OPT
+      exit
+   fi
 
    [ -z "$INPUTS" ] && die "ERROR: missing one or more input files. Use -h for help on usage."
    [ -z "$P_OPT" ] && die "Missing required .params file. Use -h for help on usage."
