@@ -3,7 +3,7 @@
 # Program: qhelp
 # Author:  Eric Deutsch
 #
-# Copyright (C) 2009-2022 by Eric Deutsch
+# Copyright (C) 2009-2023 by Eric Deutsch
 # 
 
 #### Temporary notice of deprecation of the old qconvert. This only runs on regis12
@@ -28,12 +28,20 @@ qnodes       # List the current set of cluster nodes and how busy they are
 qshow        # Show all current jobs running and queued
 qshowmine    # Show my jobs, running and queued
 
+#### Available queues (use -p queuename) (technically these are "partitions")
+active    Default standard priority queue
+urgent    For small jobs that are urgently needed and may preempt currently running jobs
+slow      For very large jobs that will take a lot of time and/or should not interfere with the standard queue
+xlarge    Submits only to the beasts with 256 cores and 2 TB of RAM
+
 #### Data conversion
 qconvert *.raw     # Convert all .raw files to mzML files
 qconvert *.d       # Convert all timsTOF .d folders to mzML files
 
 #### Submitting searches
-qcomet *.mzML         # Search all mzMLs in current directory with Comet
+qcomet *.mzML              # Search all mzMLs in current directory with Comet
+qcomet -p urgent *.mzML    # Search all mzMLs in current directory with Comet urgently
+qcomet -p slow *.mzML      # Search all mzMLs in current directory with Comet only as idle nodes are available
 qmsfragger *.mzML     # Search all mzMLs in current directory with MSFragger
 qmsfragger -s 10 -b 2 *.mzML   # Search all mzMLs with MSFragger with database split into 10 pieces
                                  and only two mzMLs batched together
