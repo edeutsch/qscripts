@@ -260,7 +260,7 @@ EOF
   for root in $roots; do
      cmds+=$(cat <<EOF
 
-mv $root.pepXML $root.pep.xml
+mv $idir$root.pepXML $root.pep.xml
 
 #/proteomics/sw/tpp-dev/bin/InteractParser $root.pep.xml $root.pepXML -n
 #/bin/rm $root.pepXML
