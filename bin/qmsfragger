@@ -265,7 +265,7 @@ mv $idir$root.pepXML $root.pep.xml
 #/proteomics/sw/tpp-dev/bin/InteractParser $root.pep.xml $root.pepXML -n
 #/bin/rm $root.pepXML
 
-updatepaths.pl -d $DATABASENAME $root.pep.xml
+updatepaths.pl -p $idir -d $DATABASENAME $root.pep.xml
 replacehere 'X! Tandem' 'MSFragger' $root.pep.xml
 
 
