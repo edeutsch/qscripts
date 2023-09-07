@@ -107,8 +107,7 @@ $COMET -P$params -N$odir$root $file
 mv $odir$root.pep.xml $odir$root.pepXML
 
 # Use InteractParser to make sure the results are TPP compatible
-$INTERACTPARSER $odir$root.pep.xml $odir$root.pepXML -L0 -R9999 \
-   -a$idir
+$INTERACTPARSER $odir$root.pep.xml $odir$root.pepXML -L0 -R9999
 rm -f $odir$root.pepXML
 
 EOF
