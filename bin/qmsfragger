@@ -184,10 +184,12 @@ if [ ! -z "$O_OPT" ]; then
 #
 function check_params() {
 
-  if [ ${QNAME} == "xlarge" ]; then
+  if [ ${QQUEUE} == "xlarge" ]; then
     MAX_PROCS=256
+    REQUESTGB=400
   else
     MAX_PROCS=80
+    REQUESTGB=90
   fi
 
   NP=$(perl -ne 'print $1 if /^\s*num_threads\s*=\s*(\d+)/' $P_OPT)
@@ -223,8 +225,6 @@ function setcmds() {
 
    # Remove previous results
    rm -f $odir$root.pep.xml  $odir$root.$prog.qlog
-
-   REQUESTGB=90
 
    if [ ! -z "$files" ]; then
       file=$files
