@@ -70,7 +70,7 @@ assert_new_cluster_head_node
 
    REMOTECONVERT=${REMOTECONVERT-$(which remoteconvert_msconvert.pl || true)}
    REMOTECONVERTFLAGS="${REMOTECONVERTFLAGS-} --log2screen "
-   REMOTECONVERT_NODE=regis30
+   # -- REMOTECONVERT_NODE=regis30
 
 # -----------------------------------------------------------------------------
 
@@ -157,13 +157,6 @@ function parse_options() {
    else
       mkdir -p "$O_OPT"
       O_OPT=$(rel2abs "$O_OPT")
-   fi
-
-   #### Set the QQUEUE value
-   if [ ! -z "$Q_OPT" ]; then
-      QQUEUE=$Q_OPT
-   else
-      QQUEUE=active
    fi
 
    true                 # return "status"
@@ -261,7 +254,7 @@ mono $TRFC_EXECUTABLE -i=$file -f=2 -o=$odir -m=1 --metadata_output_file=$odir${
 
 EOF
 )
-
+      USE_REMOTECONVERT=''
       #fi
 
    fi
@@ -311,6 +304,15 @@ EOF
      echo "INFO: Will execute the following on a cluster node:$cmds"
    fi
 
+   #### Set the QQUEUE value
+   if [ ! -z "$Q_OPT" ]; then
+      QQUEUE=$Q_OPT
+   elif [ -z "$USE_REMOTECONVERT" ]; then
+      QQUEUE='active'
+   else
+      QQUEUE=remoteconvert
+   fi
+
 }
 
 
@@ -322,7 +324,7 @@ if [ "$HOST" == "regis" ] || [ "$HOST" == "regis-dev" ] || [ "$HOST" == "regis-w
 fi
 
 # Set up for all input files
-parse_options '*.d|*.wiff|*.baf|*.raw|*.RAW' $*
+parse_options '*.d|*.wiff|*.baf|*.raw|*.RAW' "$@"
 
 submit_jobs
 
